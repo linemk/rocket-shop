@@ -1,0 +1,29 @@
+post:
+  summary: Cancel order
+  description: Отменяет заказ. Проверяет статус заказа - если PENDING_PAYMENT, меняет статус на CANCELLED. Если PAID, возвращает ошибку 409.
+  operationId: CancelOrder
+  tags:
+    - OrderService
+  parameters:
+    - $ref: ../params/order_uuid.yaml
+  responses:
+    '204':
+      description: Order successfully cancelled
+    '404':
+      description: Order not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/errors/not_found_err.yaml
+    '409':
+      description: Conflict - order is already paid and cannot be cancelled
+      content:
+        application/json:
+          schema:
+            $ref: ../components/errors/conflict_err.yaml
+    default:
+      description: Unexpected error
+      content:
+        application/json:
+          schema:
+            $ref: ../components/errors/unexpected_err.yaml
