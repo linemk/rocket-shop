@@ -23,8 +23,11 @@
 /.vscode
 /.cursor
 .DS_Store
+/.github
 
 /bin
 node_modules
 /shared/api/bundles/
 /coverage/
+package.json
+package-lock.json
