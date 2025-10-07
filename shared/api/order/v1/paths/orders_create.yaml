@@ -1,29 +1,3 @@
-get:
-  parameters:
-    - $ref: ../params/order_uuid.yaml
-  summary: Get order by uuid
-  operationId: GetOrder
-  tags:
-    - OrderService
-  responses:
-    '200':
-      description: Order information successfully retrieved
-      content:
-        application/json:
-          schema:
-            $ref: ../components/get_order_resp.yaml
-    '404':
-      description: Order data for specified uuid not found
-      content:
-        application/json:
-          schema:
-            $ref: ../components/errors/not_found_err.yaml
-    default:
-      description: Unexpected error
-      content:
-        application/json:
-          schema:
-            $ref: ../components/errors/unexpected_err.yaml
 post:
   summary: Create new order
   description: Создает новый заказ на основе выбранных пользователем деталей. Проверяет наличие деталей в инвентаре и рассчитывает общую стоимость.

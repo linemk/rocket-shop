@@ -59,12 +59,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 			if len(elem) == 0 {
 				switch r.Method {
-				case "GET":
-					s.handleGetOrderRequest([0]string{}, elemIsEscaped, w, r)
 				case "POST":
 					s.handleCreateOrderRequest([0]string{}, elemIsEscaped, w, r)
 				default:
-					s.notAllowed(w, r, "GET,POST")
+					s.notAllowed(w, r, "POST")
 				}
 
 				return
@@ -88,7 +86,16 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				elem = elem[idx:]
 
 				if len(elem) == 0 {
-					break
+					switch r.Method {
+					case "GET":
+						s.handleGetOrderRequest([1]string{
+							args[0],
+						}, elemIsEscaped, w, r)
+					default:
+						s.notAllowed(w, r, "GET")
+					}
+
+					return
 				}
 				switch elem[0] {
 				case '/': // Prefix: "/"
@@ -243,14 +250,6 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 
 			if len(elem) == 0 {
 				switch method {
-				case "GET":
-					r.name = GetOrderOperation
-					r.summary = "Get order by uuid"
-					r.operationID = "GetOrder"
-					r.pathPattern = "/api/v1/orders"
-					r.args = args
-					r.count = 0
-					return r, true
 				case "POST":
 					r.name = CreateOrderOperation
 					r.summary = "Create new order"
@@ -282,7 +281,18 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 				elem = elem[idx:]
 
 				if len(elem) == 0 {
-					break
+					switch method {
+					case "GET":
+						r.name = GetOrderOperation
+						r.summary = "Get order by uuid"
+						r.operationID = "GetOrder"
+						r.pathPattern = "/api/v1/orders/{order_uuid}"
+						r.args = args
+						r.count = 1
+						return r, true
+					default:
+						return
+					}
 				}
 				switch elem[0] {
 				case '/': // Prefix: "/"

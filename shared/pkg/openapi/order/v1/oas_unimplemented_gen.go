@@ -39,7 +39,7 @@ func (UnimplementedHandler) CreateOrder(ctx context.Context, req OptCreateOrderR
 //
 // Get order by uuid.
 //
-// GET /api/v1/orders
+// GET /api/v1/orders/{order_uuid}
 func (UnimplementedHandler) GetOrder(ctx context.Context, params GetOrderParams) (r GetOrderRes, _ error) {
 	return r, ht.ErrNotImplemented
 }

@@ -101,10 +101,44 @@ func unpackGetOrderParams(packed middleware.Parameters) (params GetOrderParams) 
 	return params
 }
 
-func decodeGetOrderParams(args [0]string, argsEscaped bool, r *http.Request) (params GetOrderParams, _ error) {
+func decodeGetOrderParams(args [1]string, argsEscaped bool, r *http.Request) (params GetOrderParams, _ error) {
 	// Decode path: order_uuid.
 	if err := func() error {
-		// Not used.
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "order_uuid",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToUUID(val)
+				if err != nil {
+					return err
+				}
+
+				params.OrderUUID = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
 		return nil
 	}(); err != nil {
 		return params, &ogenerrors.DecodeParamError{

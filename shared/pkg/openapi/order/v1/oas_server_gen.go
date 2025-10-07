@@ -28,7 +28,7 @@ type Handler interface {
 	//
 	// Get order by uuid.
 	//
-	// GET /api/v1/orders
+	// GET /api/v1/orders/{order_uuid}
 	GetOrder(ctx context.Context, params GetOrderParams) (GetOrderRes, error)
 	// PayOrder implements PayOrder operation.
 	//

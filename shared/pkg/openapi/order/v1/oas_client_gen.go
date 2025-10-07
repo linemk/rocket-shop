@@ -48,7 +48,7 @@ type Invoker interface {
 	//
 	// Get order by uuid.
 	//
-	// GET /api/v1/orders
+	// GET /api/v1/orders/{order_uuid}
 	GetOrder(ctx context.Context, params GetOrderParams) (GetOrderRes, error)
 	// PayOrder invokes PayOrder operation.
 	//
@@ -281,7 +281,7 @@ func (c *Client) sendCreateOrder(ctx context.Context, request OptCreateOrderReq)
 //
 // Get order by uuid.
 //
-// GET /api/v1/orders
+// GET /api/v1/orders/{order_uuid}
 func (c *Client) GetOrder(ctx context.Context, params GetOrderParams) (GetOrderRes, error) {
 	res, err := c.sendGetOrder(ctx, params)
 	return res, err
@@ -291,7 +291,7 @@ func (c *Client) sendGetOrder(ctx context.Context, params GetOrderParams) (res G
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("GetOrder"),
 		semconv.HTTPRequestMethodKey.String("GET"),
-		semconv.HTTPRouteKey.String("/api/v1/orders"),
+		semconv.HTTPRouteKey.String("/api/v1/orders/{order_uuid}"),
 	}
 
 	// Run stopwatch.
@@ -323,8 +323,26 @@ func (c *Client) sendGetOrder(ctx context.Context, params GetOrderParams) (res G
 
 	stage = "BuildURL"
 	u := uri.Clone(c.requestURL(ctx))
-	var pathParts [1]string
-	pathParts[0] = "/api/v1/orders"
+	var pathParts [2]string
+	pathParts[0] = "/api/v1/orders/"
+	{
+		// Encode "order_uuid" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "order_uuid",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.UUIDToString(params.OrderUUID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
 	uri.AddPathParts(u, pathParts[:]...)
 
 	stage = "EncodeRequest"
