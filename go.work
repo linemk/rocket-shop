@@ -5,5 +5,3 @@ use (
 	./order
 	./shared
 )
-
-replace github.com/linemk/rocket-shop/shared => ./shared
