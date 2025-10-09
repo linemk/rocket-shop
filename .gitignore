@@ -23,7 +23,6 @@
 /.vscode
 /.cursor
 .DS_Store
-/.github
 
 /bin
 node_modules
