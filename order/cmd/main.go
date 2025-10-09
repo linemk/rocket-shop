@@ -17,8 +17,12 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
 	"github.com/google/uuid"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	order_v1 "github.com/linemk/rocket-shop/shared/pkg/openapi/order/v1"
+	inventory_v1 "github.com/linemk/rocket-shop/shared/pkg/proto/inventory/v1"
+	payment_v1 "github.com/linemk/rocket-shop/shared/pkg/proto/payment/v1"
 )
 
 const (
@@ -26,11 +30,19 @@ const (
 	// Таймауты для HTTP-сервера
 	readHeaderTimeout = 5 * time.Second
 	shutdownTimeout   = 10 * time.Second
+	// Адрес InventoryService
+	inventoryServiceAddr = "localhost:50051"
+	// Адрес PaymentService
+	paymentServiceAddr = "localhost:50052"
 )
 
 type OrderService struct {
-	mu     sync.RWMutex
-	orders map[string]*Order
+	mu              sync.RWMutex
+	orders          map[string]*Order
+	inventoryClient inventory_v1.InventoryServiceClient
+	inventoryConn   *grpc.ClientConn
+	paymentClient   payment_v1.PaymentServiceClient
+	paymentConn     *grpc.ClientConn
 }
 
 type Order struct {
@@ -43,10 +55,31 @@ type Order struct {
 	Status        order_v1.OrderStatus   `json:"status"`
 }
 
-func NewOrderService() *OrderService {
-	return &OrderService{
-		orders: make(map[string]*Order),
+func NewOrderService() (*OrderService, error) {
+	// Подключаемся к InventoryService
+	inventoryConn, err := grpc.Dial(inventoryServiceAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to InventoryService: %w", err)
 	}
+
+	inventoryClient := inventory_v1.NewInventoryServiceClient(inventoryConn)
+
+	// Подключаемся к PaymentService
+	paymentConn, err := grpc.Dial(paymentServiceAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		inventoryConn.Close()
+		return nil, fmt.Errorf("failed to connect to PaymentService: %w", err)
+	}
+
+	paymentClient := payment_v1.NewPaymentServiceClient(paymentConn)
+
+	return &OrderService{
+		orders:          make(map[string]*Order),
+		inventoryClient: inventoryClient,
+		inventoryConn:   inventoryConn,
+		paymentClient:   paymentClient,
+		paymentConn:     paymentConn,
+	}, nil
 }
 
 func (s *OrderService) GetOrderByUUID(id string) (*Order, error) {
@@ -59,6 +92,35 @@ func (s *OrderService) GetOrderByUUID(id string) (*Order, error) {
 	}
 
 	return w, nil
+}
+
+// validateParts проверяет существование деталей через InventoryService и возвращает их общую стоимость
+func (s *OrderService) validateParts(ctx context.Context, partUUIDs []uuid.UUID) (float32, error) {
+	if len(partUUIDs) == 0 {
+		return 0, fmt.Errorf("no parts specified")
+	}
+
+	var totalPrice float32
+
+	for _, partUUID := range partUUIDs {
+		// Получаем информацию о детали через InventoryService
+		resp, err := s.inventoryClient.GetPart(ctx, &inventory_v1.GetPartRequest{
+			Uuid: partUUID.String(),
+		})
+		if err != nil {
+			return 0, fmt.Errorf("part %s not found in inventory: %w", partUUID.String(), err)
+		}
+
+		// Проверяем наличие на складе
+		if resp.Part.StockQuantity <= 0 {
+			return 0, fmt.Errorf("part %s is out of stock", partUUID.String())
+		}
+
+		// Добавляем цену к общей стоимости
+		totalPrice += float32(resp.Part.Price)
+	}
+
+	return totalPrice, nil
 }
 
 func (s *OrderService) GetOrder(_ context.Context, params order_v1.GetOrderParams) (order_v1.GetOrderRes, error) {
@@ -100,7 +162,7 @@ func (s *OrderService) NewError(_ context.Context, err error) *order_v1.Unexpect
 	}
 }
 
-func (s *OrderService) PayOrder(_ context.Context, req *order_v1.PayOrderReq, params order_v1.PayOrderParams) (order_v1.PayOrderRes, error) {
+func (s *OrderService) PayOrder(ctx context.Context, req *order_v1.PayOrderReq, params order_v1.PayOrderParams) (order_v1.PayOrderRes, error) {
 	orderID := params.OrderUUID.String()
 	paymentMethod := order_v1.PaymentMethod(req.PaymentMethod)
 	s.mu.Lock()
@@ -121,28 +183,53 @@ func (s *OrderService) PayOrder(_ context.Context, req *order_v1.PayOrderReq, pa
 		}, nil
 	}
 
-	// TODO: обращение к PaymentService через gRPC
-	transactionUUID := uuid.New()
+	// Вызываем PaymentService для обработки платежа
+	paymentResp, err := s.paymentClient.PayOrder(ctx, &payment_v1.PayOrderRequest{
+		OrderUuid:     orderID,
+		UserUuid:      order.UserID,
+		PaymentMethod: convertOpenAPIPaymentMethodToProto(paymentMethod),
+	})
+	if err != nil {
+		return &order_v1.BadRequest{
+			Code:    400,
+			Message: fmt.Sprintf("Payment failed: %v", err),
+		}, nil
+	}
 
 	// Обновляем заказ
 	order.PaymentMethod = paymentMethod
-	order.TransactionID = transactionUUID.String()
+	order.TransactionID = paymentResp.TransactionUuid
 	order.Status = order_v1.OrderStatusPAID
+
+	// Конвертируем UUID для ответа
+	transactionUUID, err := uuid.Parse(paymentResp.TransactionUuid)
+	if err != nil {
+		return &order_v1.BadRequest{
+			Code:    400,
+			Message: "Invalid transaction UUID",
+		}, nil
+	}
 
 	return &order_v1.PayOrderResp{
 		TransactionUUID: transactionUUID,
 	}, nil
 }
 
-func (s *OrderService) CreateOrder(_ context.Context, req order_v1.OptCreateOrderReq) (order_v1.CreateOrderRes, error) {
+func (s *OrderService) CreateOrder(ctx context.Context, req order_v1.OptCreateOrderReq) (order_v1.CreateOrderRes, error) {
 	userID := req.Value.UserUUID.String()
 	partsIDs := make([]string, 0, len(req.Value.PartUuids))
 	for _, id := range req.Value.PartUuids {
 		partsIDs = append(partsIDs, id.String())
 	}
 
-	// TODO: проверка деталей через InventoryService
-	// TODO: расчет цены через InventoryService
+	// Проверяем детали через InventoryService и получаем общую стоимость
+	totalPrice, err := s.validateParts(ctx, req.Value.PartUuids)
+	if err != nil {
+		return &order_v1.BadRequest{
+			Code:    400,
+			Message: fmt.Sprintf("Invalid parts: %v", err),
+		}, nil
+	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -152,14 +239,14 @@ func (s *OrderService) CreateOrder(_ context.Context, req order_v1.OptCreateOrde
 		ID:         orderUUID.String(),
 		UserID:     userID,
 		DetailsID:  partsIDs,
-		TotalPrice: 100.43, // TODO доделать при создании сервиса расчетов
+		TotalPrice: totalPrice,
 		Status:     order_v1.OrderStatusPENDINGPAYMENT,
 	}
 
 	s.orders[order.ID] = order
 
 	return &order_v1.CreateOrderResp{
-		OrderUUID:  orderUUID,
+		UUID:       orderUUID,
 		TotalPrice: order.TotalPrice,
 	}, nil
 }
@@ -200,8 +287,39 @@ func convertStringSliceToUUIDSlice(strSlice []string) []uuid.UUID {
 	return uuidSlice
 }
 
+// convertOpenAPIPaymentMethodToProto конвертирует PaymentMethod из OpenAPI в proto
+func convertOpenAPIPaymentMethodToProto(openAPIMethod order_v1.PaymentMethod) payment_v1.PaymentMethod {
+	switch openAPIMethod {
+	case order_v1.PaymentMethodPAYMENTMETHODUNSPECIFIED:
+		return payment_v1.PaymentMethod_PAYMENT_METHOD_UNSPECIFIED
+	case order_v1.PaymentMethodPAYMENTMETHODCARD:
+		return payment_v1.PaymentMethod_PAYMENT_METHOD_CARD
+	case order_v1.PaymentMethodPAYMENTMETHODSBP:
+		return payment_v1.PaymentMethod_PAYMENT_METHOD_SBP
+	case order_v1.PaymentMethodPAYMENTMETHODCREDITCARD:
+		return payment_v1.PaymentMethod_PAYMENT_METHOD_CREDIT_CARD
+	case order_v1.PaymentMethodPAYMENTMETHODINVESTORMONEY:
+		return payment_v1.PaymentMethod_PAYMENT_METHOD_INVESTOR_MONEY
+	default:
+		return payment_v1.PaymentMethod_PAYMENT_METHOD_UNSPECIFIED
+	}
+}
+
 func main() {
-	s := NewOrderService()
+	s, err := NewOrderService()
+	if err != nil {
+		log.Fatalf("Failed to create order service: %v", err)
+	}
+	defer func() {
+		err = s.inventoryConn.Close()
+		if err != nil {
+			log.Fatalf("Failed to close inventory connection: %v", err)
+		}
+		err = s.paymentConn.Close()
+		if err != nil {
+			log.Fatalf("Failed to close payment connection: %v", err)
+		}
+	}()
 
 	orderServer, err := order_v1.NewServer(s)
 	if err != nil {
@@ -224,6 +342,8 @@ func main() {
 
 	go func() {
 		log.Printf("🚀 HTTP-сервер запущен на порту %s\n", httpPort)
+		log.Printf("🔗 Подключен к InventoryService на %s\n", inventoryServiceAddr)
+		log.Printf("💳 Подключен к PaymentService на %s\n", paymentServiceAddr)
 		err = server.ListenAndServe()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Printf("❌ Ошибка запуска сервера: %v\n", err)

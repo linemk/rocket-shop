@@ -1,9 +1,0 @@
-{
-  "name": "rocket-shop",
-  "version": "1.0.0",
-  "private": true,
-  "description": "Rocket Shop microservices",
-  "devDependencies": {
-    "@redocly/cli": "^1.34.3"
-  }
-}

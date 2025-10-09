@@ -375,8 +375,8 @@ func (s *CreateOrderResp) Encode(e *jx.Encoder) {
 // encodeFields encodes fields.
 func (s *CreateOrderResp) encodeFields(e *jx.Encoder) {
 	{
-		e.FieldStart("order_uuid")
-		json.EncodeUUID(e, s.OrderUUID)
+		e.FieldStart("uuid")
+		json.EncodeUUID(e, s.UUID)
 	}
 	{
 		e.FieldStart("total_price")
@@ -385,7 +385,7 @@ func (s *CreateOrderResp) encodeFields(e *jx.Encoder) {
 }
 
 var jsonFieldsNameOfCreateOrderResp = [2]string{
-	0: "order_uuid",
+	0: "uuid",
 	1: "total_price",
 }
 
@@ -398,17 +398,17 @@ func (s *CreateOrderResp) Decode(d *jx.Decoder) error {
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
-		case "order_uuid":
+		case "uuid":
 			requiredBitSet[0] |= 1 << 0
 			if err := func() error {
 				v, err := json.DecodeUUID(d)
-				s.OrderUUID = v
+				s.UUID = v
 				if err != nil {
 					return err
 				}
 				return nil
 			}(); err != nil {
-				return errors.Wrap(err, "decode field \"order_uuid\"")
+				return errors.Wrap(err, "decode field \"uuid\"")
 			}
 		case "total_price":
 			requiredBitSet[0] |= 1 << 1
@@ -1078,16 +1078,16 @@ func (s *PaymentMethod) Decode(d *jx.Decoder) error {
 	}
 	// Try to use constant string.
 	switch PaymentMethod(v) {
-	case PaymentMethodUNKNOWN:
-		*s = PaymentMethodUNKNOWN
-	case PaymentMethodCARD:
-		*s = PaymentMethodCARD
-	case PaymentMethodSBP:
-		*s = PaymentMethodSBP
-	case PaymentMethodCREDITCARD:
-		*s = PaymentMethodCREDITCARD
-	case PaymentMethodINVESTORMONEY:
-		*s = PaymentMethodINVESTORMONEY
+	case PaymentMethodPAYMENTMETHODUNSPECIFIED:
+		*s = PaymentMethodPAYMENTMETHODUNSPECIFIED
+	case PaymentMethodPAYMENTMETHODCARD:
+		*s = PaymentMethodPAYMENTMETHODCARD
+	case PaymentMethodPAYMENTMETHODSBP:
+		*s = PaymentMethodPAYMENTMETHODSBP
+	case PaymentMethodPAYMENTMETHODCREDITCARD:
+		*s = PaymentMethodPAYMENTMETHODCREDITCARD
+	case PaymentMethodPAYMENTMETHODINVESTORMONEY:
+		*s = PaymentMethodPAYMENTMETHODINVESTORMONEY
 	default:
 		*s = PaymentMethod(v)
 	}

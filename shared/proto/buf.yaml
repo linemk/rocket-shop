@@ -1,0 +1,17 @@
+version: v2
+deps:
+  - buf.build/googleapis/googleapis
+  - buf.build/protocolbuffers/well-known-types
+
+breaking:
+  use:
+    - FILE
+  ignore:
+    - google/protobuf/timestamp.proto
+    - google/protobuf/struct.proto
+
+lint:
+  use:
+    - STANDARD
+  ignore:
+    - PACKAGE_DIRECTORY_MATCH
