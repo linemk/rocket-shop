@@ -7,13 +7,14 @@ import (
 	"sync"
 	"time"
 
-	inventory_v1 "github.com/linemk/rocket-shop/shared/pkg/proto/inventory/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	inventory_v1 "github.com/linemk/rocket-shop/shared/pkg/proto/inventory/v1"
 )
 
 const (
@@ -142,7 +143,11 @@ func (s *InventoryService) initTestData() {
 		"temperature_range": "-200 to 2000°C",
 	}
 
-	structMetadata, _ := structpb.NewStruct(metadata)
+	structMetadata, err := structpb.NewStruct(metadata)
+	if err != nil {
+		log.Printf("Failed to create struct metadata: %v", err)
+		return
+	}
 	testParts[0].Metadata = structMetadata
 	testParts[1].Metadata = structMetadata
 
@@ -174,10 +179,9 @@ func (s *InventoryService) ListParts(ctx context.Context, req *inventory_v1.List
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	var result []*inventory_v1.Part
-
 	// Если фильтр пустой, возвращаем все детали
 	if req.Filter == nil || isEmptyFilter(req.Filter) {
+		result := make([]*inventory_v1.Part, 0, len(s.parts))
 		for _, part := range s.parts {
 			result = append(result, part)
 		}
@@ -185,91 +189,127 @@ func (s *InventoryService) ListParts(ctx context.Context, req *inventory_v1.List
 	}
 
 	// Применяем фильтрацию поэтапно
-	candidates := make(map[string]*inventory_v1.Part)
-
-	// Копируем все детали как кандидаты
-	for uuid, part := range s.parts {
-		candidates[uuid] = part
-	}
-
-	// Фильтр по UUID
-	if len(req.Filter.Uuids) > 0 {
-		filtered := make(map[string]*inventory_v1.Part)
-		for _, uuid := range req.Filter.Uuids {
-			if part, exists := candidates[uuid]; exists {
-				filtered[uuid] = part
-			}
-		}
-		candidates = filtered
-	}
-
-	// Фильтр по именам
-	if len(req.Filter.Names) > 0 {
-		filtered := make(map[string]*inventory_v1.Part)
-		for uuid, part := range candidates {
-			for _, name := range req.Filter.Names {
-				if part.Name == name {
-					filtered[uuid] = part
-					break
-				}
-			}
-		}
-		candidates = filtered
-	}
-
-	// Фильтр по категориям
-	if len(req.Filter.Categories) > 0 {
-		filtered := make(map[string]*inventory_v1.Part)
-		for uuid, part := range candidates {
-			for _, category := range req.Filter.Categories {
-				if part.Category == category {
-					filtered[uuid] = part
-					break
-				}
-			}
-		}
-		candidates = filtered
-	}
-
-	// Фильтр по странам производителей
-	if len(req.Filter.ManufacturerCountries) > 0 {
-		filtered := make(map[string]*inventory_v1.Part)
-		for uuid, part := range candidates {
-			for _, country := range req.Filter.ManufacturerCountries {
-				if part.Manufacturer != nil && part.Manufacturer.Country == country {
-					filtered[uuid] = part
-					break
-				}
-			}
-		}
-		candidates = filtered
-	}
-
-	// Фильтр по тегам
-	if len(req.Filter.Tags) > 0 {
-		filtered := make(map[string]*inventory_v1.Part)
-		for uuid, part := range candidates {
-			for _, filterTag := range req.Filter.Tags {
-				for _, partTag := range part.Tags {
-					if partTag == filterTag {
-						filtered[uuid] = part
-						break
-					}
-				}
-				if _, exists := filtered[uuid]; exists {
-					break
-				}
-			}
-		}
-		candidates = filtered
-	}
+	candidates := s.applyFilters(s.parts, req.Filter)
 
 	// Преобразуем результат в слайс
+	result := make([]*inventory_v1.Part, 0, len(candidates))
 	for _, part := range candidates {
 		result = append(result, part)
 	}
 
 	return &inventory_v1.ListPartsResponse{Parts: result}, nil
+}
+
+// applyFilters применяет все фильтры к деталям
+func (s *InventoryService) applyFilters(parts map[string]*inventory_v1.Part, filter *inventory_v1.PartsFilter) map[string]*inventory_v1.Part {
+	candidates := make(map[string]*inventory_v1.Part)
+
+	// Копируем все детали как кандидаты
+	for uuid, part := range parts {
+		candidates[uuid] = part
+	}
+
+	// Применяем фильтры по порядку
+	candidates = s.filterByUUIDs(candidates, filter.Uuids)
+	candidates = s.filterByNames(candidates, filter.Names)
+	candidates = s.filterByCategories(candidates, filter.Categories)
+	candidates = s.filterByManufacturerCountries(candidates, filter.ManufacturerCountries)
+	candidates = s.filterByTags(candidates, filter.Tags)
+
+	return candidates
+}
+
+// filterByUUIDs фильтрует детали по UUID
+func (s *InventoryService) filterByUUIDs(candidates map[string]*inventory_v1.Part, uuids []string) map[string]*inventory_v1.Part {
+	if len(uuids) == 0 {
+		return candidates
+	}
+
+	filtered := make(map[string]*inventory_v1.Part)
+	for _, uuid := range uuids {
+		if part, exists := candidates[uuid]; exists {
+			filtered[uuid] = part
+		}
+	}
+	return filtered
+}
+
+// filterByNames фильтрует детали по именам
+func (s *InventoryService) filterByNames(candidates map[string]*inventory_v1.Part, names []string) map[string]*inventory_v1.Part {
+	if len(names) == 0 {
+		return candidates
+	}
+
+	filtered := make(map[string]*inventory_v1.Part)
+	for uuid, part := range candidates {
+		for _, name := range names {
+			if part.Name == name {
+				filtered[uuid] = part
+				break
+			}
+		}
+	}
+	return filtered
+}
+
+// filterByCategories фильтрует детали по категориям
+func (s *InventoryService) filterByCategories(candidates map[string]*inventory_v1.Part, categories []inventory_v1.Category) map[string]*inventory_v1.Part {
+	if len(categories) == 0 {
+		return candidates
+	}
+
+	filtered := make(map[string]*inventory_v1.Part)
+	for uuid, part := range candidates {
+		for _, category := range categories {
+			if part.Category == category {
+				filtered[uuid] = part
+				break
+			}
+		}
+	}
+	return filtered
+}
+
+// filterByManufacturerCountries фильтрует детали по странам производителей
+func (s *InventoryService) filterByManufacturerCountries(candidates map[string]*inventory_v1.Part, countries []string) map[string]*inventory_v1.Part {
+	if len(countries) == 0 {
+		return candidates
+	}
+
+	filtered := make(map[string]*inventory_v1.Part)
+	for uuid, part := range candidates {
+		if part.Manufacturer == nil {
+			continue
+		}
+		for _, country := range countries {
+			if part.Manufacturer.Country == country {
+				filtered[uuid] = part
+				break
+			}
+		}
+	}
+	return filtered
+}
+
+// filterByTags фильтрует детали по тегам
+func (s *InventoryService) filterByTags(candidates map[string]*inventory_v1.Part, tags []string) map[string]*inventory_v1.Part {
+	if len(tags) == 0 {
+		return candidates
+	}
+
+	filtered := make(map[string]*inventory_v1.Part)
+	for uuid, part := range candidates {
+		for _, filterTag := range tags {
+			for _, partTag := range part.Tags {
+				if partTag == filterTag {
+					filtered[uuid] = part
+					goto nextPart
+				}
+			}
+		}
+	nextPart:
+	}
+	return filtered
 }
 
 // isEmptyFilter проверяет, пустой ли фильтр

@@ -6,9 +6,10 @@ import (
 	"net"
 
 	"github.com/google/uuid"
-	payment_v1 "github.com/linemk/rocket-shop/shared/pkg/proto/payment/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
+
+	payment_v1 "github.com/linemk/rocket-shop/shared/pkg/proto/payment/v1"
 )
 
 const (

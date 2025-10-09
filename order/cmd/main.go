@@ -57,7 +57,7 @@ type Order struct {
 
 func NewOrderService() (*OrderService, error) {
 	// Подключаемся к InventoryService
-	inventoryConn, err := grpc.Dial(inventoryServiceAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	inventoryConn, err := grpc.NewClient(inventoryServiceAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to InventoryService: %w", err)
 	}
@@ -65,9 +65,11 @@ func NewOrderService() (*OrderService, error) {
 	inventoryClient := inventory_v1.NewInventoryServiceClient(inventoryConn)
 
 	// Подключаемся к PaymentService
-	paymentConn, err := grpc.Dial(paymentServiceAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	paymentConn, err := grpc.NewClient(paymentServiceAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		inventoryConn.Close()
+		if closeErr := inventoryConn.Close(); closeErr != nil {
+			log.Printf("Failed to close inventory connection: %v", closeErr)
+		}
 		return nil, fmt.Errorf("failed to connect to PaymentService: %w", err)
 	}
 
@@ -323,7 +325,8 @@ func main() {
 
 	orderServer, err := order_v1.NewServer(s)
 	if err != nil {
-		log.Fatalf("Failed to create order server: %v", err)
+		log.Printf("Failed to create order server: %v", err)
+		return
 	}
 
 	r := chi.NewRouter()
