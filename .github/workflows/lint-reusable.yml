@@ -33,6 +33,18 @@ jobs:
       - name: 📌 Install Task
         uses: arduino/setup-task@v2.0.0
 
+      - name: 🔧 Install dependencies for all modules
+        run: |
+            echo "🔧 Устанавливаем зависимости для всех модулей в workspace..."
+            go work sync
+            for mod in ${{ inputs.modules }}; do
+              if [ -d "$mod" ]; then
+                echo "🔧 Устанавливаем зависимости для $mod"
+                cd "$mod" && go mod download && go mod tidy
+                cd ..
+              fi
+            done  
+
       - name: ✅ Run golangci-lint via Taskfile
         env:
           MODULES: ${{ inputs.modules }}
