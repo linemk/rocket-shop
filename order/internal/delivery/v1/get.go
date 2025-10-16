@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+
 	order_v1 "github.com/linemk/rocket-shop/shared/pkg/openapi/order/v1"
 )
 

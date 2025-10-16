@@ -2,8 +2,9 @@ package repository
 
 import (
 	"context"
-	"github.com/linemk/rocket-shop/order/internal/entyties/models"
 	"time"
+
+	"github.com/linemk/rocket-shop/order/internal/entyties/models"
 )
 
 func (r *repository) Create(_ context.Context, order models.Order) error {

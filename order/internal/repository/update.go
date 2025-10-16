@@ -2,9 +2,10 @@ package repository
 
 import (
 	"context"
+	"time"
+
 	"github.com/linemk/rocket-shop/order/internal/entyties/apperrors"
 	"github.com/linemk/rocket-shop/order/internal/entyties/models"
-	"time"
 )
 
 func (r *repository) Update(_ context.Context, uuid string, updateInfo models.OrderUpdateInfo) error {

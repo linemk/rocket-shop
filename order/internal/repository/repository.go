@@ -2,8 +2,9 @@ package repository
 
 import (
 	"context"
-	"github.com/linemk/rocket-shop/order/internal/entyties/models"
 	"sync"
+
+	"github.com/linemk/rocket-shop/order/internal/entyties/models"
 )
 
 type repository struct {

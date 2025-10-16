@@ -14,20 +14,7 @@ func (uc *useCase) GetPart(ctx context.Context, uuid string) (models.PartInfo, e
 	}
 
 	// Конвертируем Part в PartInfo
-	partInfo := models.PartInfo{
-		UUID:          part.UUID,
-		Name:          part.Name,
-		Description:   part.Description,
-		Price:         part.Price,
-		StockQuantity: part.StockQuantity,
-		Category:      part.Category,
-		Dimensions:    part.Dimensions,
-		Manufacturer:  part.Manufacturer,
-		Tags:          part.Tags,
-		Metadata:      part.Metadata,
-		CreatedAt:     part.CreatedAt,
-		UpdatedAt:     part.UpdatedAt,
-	}
+	partInfo := models.PartInfo(part)
 
 	return partInfo, nil
 }

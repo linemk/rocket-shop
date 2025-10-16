@@ -3,9 +3,10 @@ package v1
 import (
 	"fmt"
 
-	payment_v1 "github.com/linemk/rocket-shop/shared/pkg/proto/payment/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
+	payment_v1 "github.com/linemk/rocket-shop/shared/pkg/proto/payment/v1"
 )
 
 type Client struct {

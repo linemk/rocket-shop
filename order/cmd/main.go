@@ -40,13 +40,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create inventory client: %v", err)
 	}
-	defer inventoryClient.Close()
 
 	paymentClient, err := paymentClient.NewClient(paymentServiceAddr)
 	if err != nil {
 		log.Fatalf("Failed to create payment client: %v", err)
 	}
-	defer paymentClient.Close()
 
 	// Инициализируем UseCase
 	orderUseCase := usecase.NewUseCase(orderRepository, inventoryClient, paymentClient)
@@ -59,6 +57,16 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create order server: %v", err)
 	}
+
+	// Устанавливаем defer после всех проверок ошибок
+	defer func() {
+		if err := inventoryClient.Close(); err != nil {
+			log.Printf("Failed to close inventory client: %v", err)
+		}
+		if err := paymentClient.Close(); err != nil {
+			log.Printf("Failed to close payment client: %v", err)
+		}
+	}()
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)

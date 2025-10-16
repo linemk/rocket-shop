@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+
 	inventoryClient "github.com/linemk/rocket-shop/order/internal/client/grpc/inventory/v1"
 	paymentClient "github.com/linemk/rocket-shop/order/internal/client/grpc/payment/v1"
 	"github.com/linemk/rocket-shop/order/internal/entyties/models"

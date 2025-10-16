@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/linemk/rocket-shop/order/internal/entyties/apperrors"
 	"github.com/linemk/rocket-shop/order/internal/entyties/models"
 	order_v1 "github.com/linemk/rocket-shop/shared/pkg/openapi/order/v1"

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/linemk/rocket-shop/payment/internal/entyties/apperrors"
 	"github.com/linemk/rocket-shop/payment/internal/entyties/models"
 	payment_v1 "github.com/linemk/rocket-shop/shared/pkg/proto/payment/v1"

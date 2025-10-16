@@ -1,77 +1,54 @@
 package converter
 
 import (
+	"time"
+
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"github.com/linemk/rocket-shop/inventory/internal/entyties/models"
 	inventory_v1 "github.com/linemk/rocket-shop/shared/pkg/proto/inventory/v1"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // PartToProto конвертирует модель Part в protobuf Part
 func PartToProto(part models.Part) *inventory_v1.Part {
-	protoPart := &inventory_v1.Part{
-		Uuid:          part.UUID,
-		Name:          part.Name,
-		Description:   part.Description,
-		Price:         part.Price,
-		StockQuantity: part.StockQuantity,
-		Category:      part.Category,
-		Tags:          part.Tags,
-		CreatedAt:     timestamppb.New(part.CreatedAt),
-		UpdatedAt:     timestamppb.New(part.UpdatedAt),
-	}
-
-	// Конвертируем Dimensions
-	if part.Dimensions != nil {
-		protoPart.Dimensions = &inventory_v1.Dimensions{
-			Length: part.Dimensions.Length,
-			Width:  part.Dimensions.Width,
-			Height: part.Dimensions.Height,
-			Weight: part.Dimensions.Weight,
-		}
-	}
-
-	// Конвертируем Manufacturer
-	if part.Manufacturer != nil {
-		protoPart.Manufacturer = &inventory_v1.Manufacturer{
-			Name:    part.Manufacturer.Name,
-			Country: part.Manufacturer.Country,
-			Website: part.Manufacturer.Website,
-		}
-	}
-
-	return protoPart
+	return convertToProto(part.UUID, part.Name, part.Description, part.Price, part.StockQuantity, part.Category, part.Tags, part.CreatedAt, part.UpdatedAt, part.Dimensions, part.Manufacturer)
 }
 
 // PartInfoToProto конвертирует модель PartInfo в protobuf Part
 func PartInfoToProto(partInfo models.PartInfo) *inventory_v1.Part {
+	return convertToProto(partInfo.UUID, partInfo.Name, partInfo.Description, partInfo.Price, partInfo.StockQuantity, partInfo.Category, partInfo.Tags, partInfo.CreatedAt, partInfo.UpdatedAt, partInfo.Dimensions, partInfo.Manufacturer)
+}
+
+// convertToProto общая функция для конвертации в protobuf Part
+func convertToProto(uuid, name, description string, price float64, stockQuantity int64, category inventory_v1.Category, tags []string, createdAt, updatedAt time.Time, dimensions *models.Dimensions, manufacturer *models.Manufacturer) *inventory_v1.Part {
 	protoPart := &inventory_v1.Part{
-		Uuid:          partInfo.UUID,
-		Name:          partInfo.Name,
-		Description:   partInfo.Description,
-		Price:         partInfo.Price,
-		StockQuantity: partInfo.StockQuantity,
-		Category:      partInfo.Category,
-		Tags:          partInfo.Tags,
-		CreatedAt:     timestamppb.New(partInfo.CreatedAt),
-		UpdatedAt:     timestamppb.New(partInfo.UpdatedAt),
+		Uuid:          uuid,
+		Name:          name,
+		Description:   description,
+		Price:         price,
+		StockQuantity: stockQuantity,
+		Category:      category,
+		Tags:          tags,
+		CreatedAt:     timestamppb.New(createdAt),
+		UpdatedAt:     timestamppb.New(updatedAt),
 	}
 
 	// Конвертируем Dimensions
-	if partInfo.Dimensions != nil {
+	if dimensions != nil {
 		protoPart.Dimensions = &inventory_v1.Dimensions{
-			Length: partInfo.Dimensions.Length,
-			Width:  partInfo.Dimensions.Width,
-			Height: partInfo.Dimensions.Height,
-			Weight: partInfo.Dimensions.Weight,
+			Length: dimensions.Length,
+			Width:  dimensions.Width,
+			Height: dimensions.Height,
+			Weight: dimensions.Weight,
 		}
 	}
 
 	// Конвертируем Manufacturer
-	if partInfo.Manufacturer != nil {
+	if manufacturer != nil {
 		protoPart.Manufacturer = &inventory_v1.Manufacturer{
-			Name:    partInfo.Manufacturer.Name,
-			Country: partInfo.Manufacturer.Country,
-			Website: partInfo.Manufacturer.Website,
+			Name:    manufacturer.Name,
+			Country: manufacturer.Country,
+			Website: manufacturer.Website,
 		}
 	}
 

@@ -15,20 +15,7 @@ func (uc *useCase) ListParts(ctx context.Context, filter models.PartFilter) ([]m
 	// Конвертируем []Part в []PartInfo
 	partInfos := make([]models.PartInfo, 0, len(parts))
 	for _, part := range parts {
-		partInfo := models.PartInfo{
-			UUID:          part.UUID,
-			Name:          part.Name,
-			Description:   part.Description,
-			Price:         part.Price,
-			StockQuantity: part.StockQuantity,
-			Category:      part.Category,
-			Dimensions:    part.Dimensions,
-			Manufacturer:  part.Manufacturer,
-			Tags:          part.Tags,
-			Metadata:      part.Metadata,
-			CreatedAt:     part.CreatedAt,
-			UpdatedAt:     part.UpdatedAt,
-		}
+		partInfo := models.PartInfo(part)
 		partInfos = append(partInfos, partInfo)
 	}
 
