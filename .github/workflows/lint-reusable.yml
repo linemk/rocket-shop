@@ -27,8 +27,19 @@ jobs:
         with:
           go-version: ${{ inputs.go-version }}
 
-      - name: 🐾 Show go.work (debug)
-        run: cat go.work || echo "❗ go.work not found"
+      - name: 🏗 Create Go workspace
+        run: |
+            echo "🏗 Создаем Go workspace..."
+            go work init
+            for mod in ${{ inputs.modules }}; do
+              if [ -d "$mod" ]; then
+                echo "🏗 Добавляем модуль $mod в workspace"
+                go work use "$mod"
+              fi
+            done
+            echo "📋 Содержимое go.work:"
+            cat go.work
+      
 
       - name: 📌 Install Task
         uses: arduino/setup-task@v2.0.0
