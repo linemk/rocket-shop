@@ -29,14 +29,14 @@ var _ OrderUseCase = (*useCase)(nil)
 
 type useCase struct {
 	orderRepository repository.OrderRepository
-	inventoryClient *inventoryClient.Client
-	paymentClient   *paymentClient.Client
+	inventoryClient inventoryClient.InventoryClient
+	paymentClient   paymentClient.PaymentClient
 }
 
 func NewUseCase(
 	orderRepository repository.OrderRepository,
-	inventoryClient *inventoryClient.Client,
-	paymentClient *paymentClient.Client,
+	inventoryClient inventoryClient.InventoryClient,
+	paymentClient paymentClient.PaymentClient,
 ) OrderUseCase {
 	return &useCase{
 		orderRepository: orderRepository,

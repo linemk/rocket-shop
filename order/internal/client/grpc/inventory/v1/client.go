@@ -31,3 +31,6 @@ func NewClient(address string) (*Client, error) {
 func (c *Client) Close() error {
 	return c.conn.Close()
 }
+
+// Проверяем, что Client реализует интерфейс InventoryClient
+var _ InventoryClient = (*Client)(nil)
