@@ -124,6 +124,25 @@ tasks:
         done
         exit $ERR
 
+  test:
+    desc: "Запускает unit тесты для всех модулей"
+    summary: |
+      Запускает unit тесты (go test) для всех модулей проекта.
+      Тестирует код во всех сервисах: inventory, order, payment.
+    cmds:
+      - |
+        set -e
+        ERR=0
+        echo "🧪 Тестируем все модули ..."
+        for mod in {{.MODULES}}; do
+          if [ -d "$mod" ]; then
+            echo "🧪 Тестируем $mod module"
+            cd "$mod" && go test -v ./... || ERR=1
+            cd ..
+          fi
+        done
+        exit $ERR
+
   install-buf:
     desc: "Устанавливает Buf в каталог bin"
     cmds:
