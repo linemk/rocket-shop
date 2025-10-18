@@ -82,7 +82,11 @@ func TestCreateOrder(t *testing.T) {
 			result, err := api.CreateOrder(ctx, tt.req)
 
 			if tt.wantErr {
-				require.Error(t, err)
+				// Для невалидного запроса API возвращает BadRequest в теле ответа и err == nil
+				require.NoError(t, err)
+				require.IsType(t, &order_v1.BadRequest{}, result)
+				bad := result.(*order_v1.BadRequest)
+				require.Equal(t, 400, bad.Code)
 				return
 			}
 

@@ -93,6 +93,9 @@ func ProtoToPart(protoPart *inventory_v1.Part) models.Part {
 
 // ProtoToPartFilter конвертирует protobuf PartsFilter в модель PartFilter
 func ProtoToPartFilter(protoFilter *inventory_v1.PartsFilter) models.PartFilter {
+	if protoFilter == nil {
+		return models.PartFilter{}
+	}
 	return models.PartFilter{
 		UUIDs:                 protoFilter.Uuids,
 		Names:                 protoFilter.Names,
