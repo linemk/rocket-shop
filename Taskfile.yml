@@ -118,7 +118,7 @@ tasks:
         for mod in {{.MODULES}}; do
           if [ -d "$mod" ]; then
             echo "🔍 Линтим $mod module"
-            cd "$mod" && {{.GOLANGCI_LINT}} run ./... --config=../.golangci.yml || ERR=1
+            cd "$mod" && {{.GOLANGCI_LINT}} run ./... --config=../.golangci.yml --fix || ERR=1
             cd ..
           fi
         done

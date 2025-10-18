@@ -2,13 +2,15 @@ package tests
 
 import (
 	"context"
+	"testing"
+
 	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
+
 	"github.com/linemk/rocket-shop/inventory/internal/entyties/apperrors"
 	"github.com/linemk/rocket-shop/inventory/internal/entyties/models"
 	"github.com/linemk/rocket-shop/inventory/internal/mocks"
 	"github.com/linemk/rocket-shop/inventory/internal/usecase"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestCreate(t *testing.T) {
