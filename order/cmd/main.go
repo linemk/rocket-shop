@@ -61,7 +61,8 @@ func main() {
 
 	// Проверяем соединение
 	if err := pool.Ping(ctx); err != nil {
-		log.Fatalf("Failed to ping database: %v", err)
+		log.Printf("Failed to ping database: %v", err)
+		return
 	}
 
 	log.Println("Successfully connected to PostgreSQL")
@@ -76,7 +77,8 @@ func main() {
 
 	m := migrator.NewMigrator(sqlDB, migrationsDir)
 	if err := m.Up(); err != nil && !errors.Is(err, sql.ErrNoRows) {
-		log.Fatalf("Failed to run migrations: %v", err)
+		log.Printf("Failed to run migrations: %v", err)
+		return
 	}
 
 	log.Println("Migrations applied successfully")
@@ -87,12 +89,14 @@ func main() {
 	// Инициализируем клиенты
 	inventoryClient, err := inventoryClient.NewClient(inventoryServiceAddr)
 	if err != nil {
-		log.Fatalf("Failed to create inventory client: %v", err)
+		log.Printf("Failed to create inventory client: %v", err)
+		return
 	}
 
 	paymentClient, err := paymentClient.NewClient(paymentServiceAddr)
 	if err != nil {
-		log.Fatalf("Failed to create payment client: %v", err)
+		log.Printf("Failed to create payment client: %v", err)
+		return
 	}
 
 	// Инициализируем UseCase
@@ -104,7 +108,8 @@ func main() {
 	// Создаем сервер
 	orderServer, err := order_v1.NewServer(api)
 	if err != nil {
-		log.Fatalf("Failed to create order server: %v", err)
+		log.Printf("Failed to create order server: %v", err)
+		return
 	}
 
 	// Устанавливаем defer после всех проверок ошибок

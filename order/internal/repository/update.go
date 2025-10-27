@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	sq "github.com/Masterminds/squirrel"
+
 	"github.com/linemk/rocket-shop/order/internal/entyties/apperrors"
 	"github.com/linemk/rocket-shop/order/internal/entyties/models"
 )
@@ -29,18 +31,20 @@ func (r *repository) Update(ctx context.Context, uuid string, updateInfo models.
 		order.PaymentMethod = *updateInfo.PaymentMethod
 	}
 
-	// Обновляем в БД
-	query := `UPDATE orders
-	SET updated_at = $1, status = $2, transaction_id = $3, payment_method = $4
-	WHERE uuid = $5`
+	// Используем squirrel для type-safe query building
+	query, args, err := sq.Update("orders").
+		PlaceholderFormat(sq.Dollar).
+		Set("updated_at", order.UpdatedAt).
+		Set("status", string(order.Status)).
+		Set("transaction_id", order.TransactionID).
+		Set("payment_method", string(order.PaymentMethod)).
+		Where(sq.Eq{"uuid": uuid}).
+		ToSql()
+	if err != nil {
+		return err
+	}
 
-	result, err := r.db.Exec(ctx, query,
-		order.UpdatedAt,
-		string(order.Status),
-		order.TransactionID,
-		string(order.PaymentMethod),
-		uuid,
-	)
+	result, err := r.db.Exec(ctx, query, args...)
 	if err != nil {
 		return err
 	}

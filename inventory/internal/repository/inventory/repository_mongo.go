@@ -3,6 +3,7 @@ package inventory
 import (
 	"context"
 	"errors"
+	"log"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -99,7 +100,11 @@ func (r *MongoRepository) ListParts(ctx context.Context, filter models.PartFilte
 	if err != nil {
 		return nil, err
 	}
-	defer cursor.Close(ctx)
+	defer func() {
+		if err := cursor.Close(ctx); err != nil {
+			log.Printf("cursor close error: %v", err)
+		}
+	}()
 
 	var parts []models.Part
 	if err := cursor.All(ctx, &parts); err != nil {
@@ -131,7 +136,6 @@ func (r *MongoRepository) UpdatePart(ctx context.Context, uuid string, part mode
 		bson.M{"uuid": uuid},
 		bson.M{"$set": part},
 	)
-
 	if err != nil {
 		return err
 	}

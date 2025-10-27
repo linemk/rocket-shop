@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/linemk/rocket-shop/order/internal/entyties/models"
 )
 

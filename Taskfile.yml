@@ -465,3 +465,110 @@ tasks:
         
         echo
         echo "🎉 Все тесты API успешно выполнены!"
+
+  # ============================================================================
+  # Database и сервисы startup tasks
+  # ============================================================================
+
+  docker:network:create:
+    desc: "Создать Docker сеть для микросервисов"
+    cmds:
+      - echo "🌐 Создаем сеть rocket-shop-network..."
+      - docker network create rocket-shop-network 2>/dev/null || echo "✅ Сеть уже существует"
+
+  db:up:
+    desc: "Поднять все БД контейнеры (PostgreSQL + MongoDB)"
+    deps: [ docker:network:create ]
+    cmds:
+      - echo "🚀 Поднимаем контейнеры БД..."
+      - docker-compose -f deploy/compose/inventory/docker-compose.yml up -d
+      - docker-compose -f deploy/compose/order/docker-compose.yml up -d
+      - echo "⏳ Ждем инициализации контейнеров..."
+      - sleep 5
+      - echo "✅ БД готовы"
+
+  db:down:
+    desc: "Остановить и удалить все контейнеры БД"
+    cmds:
+      - echo "🛑 Останавливаем контейнеры БД..."
+      - docker-compose -f deploy/compose/inventory/docker-compose.yml down -v
+      - docker-compose -f deploy/compose/order/docker-compose.yml down -v
+      - echo "✅ Контейнеры удалены"
+
+  services:start:inventory:
+    desc: "Запустить Inventory service"
+    cmds:
+      - echo "🚀 Запускаем Inventory service..."
+      - cd inventory && go run cmd/main.go > /tmp/inventory.log 2>&1 &
+      - echo "✅ Inventory запущен"
+
+  services:start:payment:
+    desc: "Запустить Payment service"
+    cmds:
+      - echo "🚀 Запускаем Payment service..."
+      - cd payment && go run cmd/main.go > /tmp/payment.log 2>&1 &
+      - echo "✅ Payment запущен"
+
+  services:start:order:
+    desc: "Запустить Order service"
+    cmds:
+      - echo "🚀 Запускаем Order service..."
+      - cd order && go run cmd/main.go > /tmp/order.log 2>&1 &
+      - echo "✅ Order запущен"
+
+  services:start:all:
+    desc: "Запустить все микросервисы"
+    cmds:
+      - task: services:start:inventory
+      - task: services:start:payment
+      - sleep 2
+      - task: services:start:order
+      - sleep 3
+      - echo "✅ Все сервисы запущены"
+
+  services:stop:
+    desc: "Остановить все запущенные Go сервисы"
+    cmds:
+      - echo "🛑 Останавливаем Go сервисы..."
+      - pkill -9 -f "go run" || true
+      - sleep 1
+      - echo "✅ Сервисы остановлены"
+
+  services:logs:inventory:
+    desc: "Показать логи Inventory service"
+    cmds:
+      - tail -50 /tmp/inventory.log
+
+  services:logs:payment:
+    desc: "Показать логи Payment service"
+    cmds:
+      - tail -50 /tmp/payment.log
+
+  services:logs:order:
+    desc: "Показать логи Order service"
+    cmds:
+      - tail -50 /tmp/order.log
+
+  services:logs:all:
+    desc: "Показать логи всех сервисов"
+    cmds:
+      - echo "=== Inventory ===" && tail -5 /tmp/inventory.log
+      - echo "" && echo "=== Payment ===" && tail -5 /tmp/payment.log
+      - echo "" && echo "=== Order ===" && tail -5 /tmp/order.log
+
+  dev:up:
+    desc: "Запустить все: БД + микросервисы (development режим)"
+    cmds:
+      - task: db:up
+      - sleep 2
+      - task: services:start:all
+      - echo "🎉 Development окружение готово!"
+      - echo "📋 Логи:"
+      - task: services:logs:all
+
+  dev:down:
+    desc: "Остановить все: микросервисы + БД"
+    cmds:
+      - task: services:stop
+      - task: db:down
+      - echo "✅ Development окружение остановлено"

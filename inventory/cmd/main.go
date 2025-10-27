@@ -55,7 +55,8 @@ func main() {
 
 	// Проверяем соединение
 	if err := client.Ping(ctx, nil); err != nil {
-		log.Fatalf("Failed to ping MongoDB: %v", err)
+		log.Printf("Failed to ping MongoDB: %v", err)
+		return
 	}
 
 	log.Println("Successfully connected to MongoDB")
@@ -78,7 +79,8 @@ func main() {
 	// Создаем gRPC сервер
 	lis, err := net.Listen("tcp", ":"+grpcPort)
 	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
+		log.Printf("Failed to listen: %v", err)
+		return
 	}
 
 	grpcServer := grpc.NewServer()
@@ -93,14 +95,15 @@ func main() {
 
 	// Запускаем сервер
 	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("Failed to serve: %v", err)
+		log.Printf("Failed to serve: %v", err)
 	}
 }
 
 // initTestData инициализирует тестовые данные деталей
 func initTestData(repo interface {
 	CreatePart(ctx context.Context, part models.Part) error
-}) {
+},
+) {
 	now := time.Now()
 
 	// Создаем тестовые детали

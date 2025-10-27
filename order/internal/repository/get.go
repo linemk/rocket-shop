@@ -5,32 +5,41 @@ import (
 	"database/sql"
 	"errors"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
+
 	"github.com/linemk/rocket-shop/order/internal/entyties/apperrors"
 	"github.com/linemk/rocket-shop/order/internal/entyties/models"
 	order_v1 "github.com/linemk/rocket-shop/shared/pkg/openapi/order/v1"
 )
 
 func (r *repository) Get(ctx context.Context, orderUUID string) (models.Order, error) {
-	query := `SELECT
-		uuid,
-		user_id,
-		part_uuids,
-		total_price,
-		transaction_id,
-		payment_method,
-		status,
-		created_at,
-		updated_at
-	FROM orders
-	WHERE uuid = $1`
+	// Используем squirrel для type-safe query building
+	query, args, err := sq.Select(
+		"uuid",
+		"user_id",
+		"part_uuids",
+		"total_price",
+		"transaction_id",
+		"payment_method",
+		"status",
+		"created_at",
+		"updated_at",
+	).
+		From("orders").
+		PlaceholderFormat(sq.Dollar).
+		Where(sq.Eq{"uuid": orderUUID}).
+		ToSql()
+	if err != nil {
+		return models.Order{}, err
+	}
 
 	var order models.Order
 	var partUUIDs []uuid.UUID
 	var paymentMethodStr, statusStr string
 	var updatedAt sql.NullTime
 
-	err := r.db.QueryRow(ctx, query, orderUUID).Scan(
+	err = r.db.QueryRow(ctx, query, args...).Scan(
 		&order.UUID,
 		&order.UserID,
 		&partUUIDs, // pgx автоматически конвертирует PostgreSQL array в []uuid.UUID
@@ -41,7 +50,6 @@ func (r *repository) Get(ctx context.Context, orderUUID string) (models.Order, e
 		&order.CreatedAt,
 		&updatedAt,
 	)
-
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return models.Order{}, apperrors.ErrOrderNotFound
