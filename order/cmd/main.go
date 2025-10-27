@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"log"
 	"net"
@@ -14,10 +15,13 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
 
 	inventoryClient "github.com/linemk/rocket-shop/order/internal/client/grpc/inventory/v1"
 	paymentClient "github.com/linemk/rocket-shop/order/internal/client/grpc/payment/v1"
 	v1 "github.com/linemk/rocket-shop/order/internal/delivery/v1"
+	"github.com/linemk/rocket-shop/order/internal/migrator"
 	"github.com/linemk/rocket-shop/order/internal/repository"
 	"github.com/linemk/rocket-shop/order/internal/usecase"
 	order_v1 "github.com/linemk/rocket-shop/shared/pkg/openapi/order/v1"
@@ -29,11 +33,56 @@ const (
 	paymentServiceAddr   = "localhost:50052"
 	readHeaderTimeout    = 5 * time.Second
 	shutdownTimeout      = 10 * time.Second
+	defaultDBURI         = "postgres://order_user:order_password@localhost:5432/order_db?sslmode=disable"
+	defaultMigrationsDir = "migrations"
 )
 
 func main() {
+	ctx := context.Background()
+
+	// Получаем строку подключения из переменной окружения
+	dbURI := os.Getenv("ORDER_DB_URI")
+	if dbURI == "" {
+		dbURI = defaultDBURI
+	}
+
+	// Получаем директорию миграций из переменной окружения
+	migrationsDir := os.Getenv("ORDER_MIGRATIONS_DIR")
+	if migrationsDir == "" {
+		migrationsDir = defaultMigrationsDir
+	}
+
+	// Создаем пул соединений с PostgreSQL
+	pool, err := pgxpool.New(ctx, dbURI)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer pool.Close()
+
+	// Проверяем соединение
+	if err := pool.Ping(ctx); err != nil {
+		log.Fatalf("Failed to ping database: %v", err)
+	}
+
+	log.Println("Successfully connected to PostgreSQL")
+
+	// Выполняем миграции
+	sqlDB := stdlib.OpenDBFromPool(pool)
+	defer func() {
+		if err := sqlDB.Close(); err != nil {
+			log.Printf("Failed to close sqlDB: %v", err)
+		}
+	}()
+
+	m := migrator.NewMigrator(sqlDB, migrationsDir)
+	if err := m.Up(); err != nil && !errors.Is(err, sql.ErrNoRows) {
+		log.Fatalf("Failed to run migrations: %v", err)
+	}
+
+	log.Println("Migrations applied successfully")
+
 	// Инициализируем репозиторий
-	orderRepository := repository.NewRepository()
+	orderRepository := repository.NewRepository(pool)
 
 	// Инициализируем клиенты
 	inventoryClient, err := inventoryClient.NewClient(inventoryServiceAddr)

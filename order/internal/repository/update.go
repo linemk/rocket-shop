@@ -8,18 +8,17 @@ import (
 	"github.com/linemk/rocket-shop/order/internal/entyties/models"
 )
 
-func (r *repository) Update(_ context.Context, uuid string, updateInfo models.OrderUpdateInfo) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+func (r *repository) Update(ctx context.Context, uuid string, updateInfo models.OrderUpdateInfo) error {
+	now := time.Now()
 
-	order, exists := r.data[uuid]
-	if !exists {
-		return apperrors.ErrOrderNotFound
+	// Получаем текущий заказ
+	order, err := r.Get(ctx, uuid)
+	if err != nil {
+		return err
 	}
 
-	now := time.Now()
+	// Обновляем поля
 	order.UpdatedAt = &now
-
 	if updateInfo.Status != nil {
 		order.Status = *updateInfo.Status
 	}
@@ -30,6 +29,25 @@ func (r *repository) Update(_ context.Context, uuid string, updateInfo models.Or
 		order.PaymentMethod = *updateInfo.PaymentMethod
 	}
 
-	r.data[uuid] = order
+	// Обновляем в БД
+	query := `UPDATE orders
+	SET updated_at = $1, status = $2, transaction_id = $3, payment_method = $4
+	WHERE uuid = $5`
+
+	result, err := r.db.Exec(ctx, query,
+		order.UpdatedAt,
+		string(order.Status),
+		order.TransactionID,
+		string(order.PaymentMethod),
+		uuid,
+	)
+	if err != nil {
+		return err
+	}
+
+	if result.RowsAffected() == 0 {
+		return apperrors.ErrOrderNotFound
+	}
+
 	return nil
 }

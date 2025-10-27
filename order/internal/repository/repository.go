@@ -2,19 +2,18 @@ package repository
 
 import (
 	"context"
-	"sync"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/linemk/rocket-shop/order/internal/entyties/models"
 )
 
 type repository struct {
-	mu   sync.RWMutex
-	data map[string]models.Order
+	db *pgxpool.Pool
 }
 
-func NewRepository() *repository {
+func NewRepository(db *pgxpool.Pool) *repository {
 	return &repository{
-		data: make(map[string]models.Order),
+		db: db,
 	}
 }
 

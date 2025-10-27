@@ -1,0 +1,4 @@
+networks:
+  rocket-shop-network:
+    driver: bridge
+    name: rocket-shop-network

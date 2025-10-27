@@ -4,8 +4,11 @@ import (
 	"context"
 	"log"
 	"net"
+	"os"
 	"time"
 
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -13,18 +16,55 @@ import (
 
 	"github.com/linemk/rocket-shop/inventory/internal/converter"
 	v1 "github.com/linemk/rocket-shop/inventory/internal/delivery/v1"
+	"github.com/linemk/rocket-shop/inventory/internal/entyties/models"
 	inventoryRepository "github.com/linemk/rocket-shop/inventory/internal/repository/inventory"
 	"github.com/linemk/rocket-shop/inventory/internal/usecase"
 	inventory_v1 "github.com/linemk/rocket-shop/shared/pkg/proto/inventory/v1"
 )
 
 const (
-	grpcPort = "50051"
+	grpcPort           = "50051"
+	defaultMongoURI    = "mongodb://inventory_user:inventory_password@localhost:27017"
+	defaultMongoDBName = "inventory_db"
 )
 
 func main() {
-	// Создаем репозиторий
-	inventoryRepo := inventoryRepository.NewRepository()
+	ctx := context.Background()
+
+	// Получаем параметры подключения к MongoDB из переменных окружения
+	mongoURI := os.Getenv("INVENTORY_MONGO_URI")
+	if mongoURI == "" {
+		mongoURI = defaultMongoURI
+	}
+
+	mongoDBName := os.Getenv("INVENTORY_MONGO_DB")
+	if mongoDBName == "" {
+		mongoDBName = defaultMongoDBName
+	}
+
+	// Создаем клиент MongoDB
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURI))
+	if err != nil {
+		log.Fatalf("Failed to connect to MongoDB: %v", err)
+	}
+	defer func() {
+		if err := client.Disconnect(ctx); err != nil {
+			log.Printf("Failed to disconnect from MongoDB: %v", err)
+		}
+	}()
+
+	// Проверяем соединение
+	if err := client.Ping(ctx, nil); err != nil {
+		log.Fatalf("Failed to ping MongoDB: %v", err)
+	}
+
+	log.Println("Successfully connected to MongoDB")
+
+	// Получаем базу данных
+	db := client.Database(mongoDBName)
+
+	// Создаем MongoDB репозиторий
+	inventoryRepo := inventoryRepository.NewMongoRepository(db)
 
 	// Инициализируем тестовые данные
 	initTestData(inventoryRepo)
@@ -58,7 +98,9 @@ func main() {
 }
 
 // initTestData инициализирует тестовые данные деталей
-func initTestData(repo *inventoryRepository.Repository) {
+func initTestData(repo interface {
+	CreatePart(ctx context.Context, part models.Part) error
+}) {
 	now := time.Now()
 
 	// Создаем тестовые детали
