@@ -101,6 +101,7 @@ func main() {
 
 // initTestData инициализирует тестовые данные деталей
 func initTestData(repo interface {
+	GetPart(ctx context.Context, uuid string) (models.Part, error)
 	CreatePart(ctx context.Context, part models.Part) error
 },
 ) {
@@ -215,10 +216,22 @@ func initTestData(repo interface {
 
 	// Добавляем детали в репозиторий
 	for _, protoPart := range testParts {
-		// Конвертируем protobuf в модель и добавляем в репозиторий
+		// Конвертируем protobuf в модель
 		part := converter.ProtoToPart(protoPart)
+
+		// Проверяем, существует ли деталь
+		_, err := repo.GetPart(context.TODO(), part.UUID)
+		if err == nil {
+			// Деталь уже существует, пропускаем
+			log.Printf("Part %s already exists, skipping", part.UUID)
+			continue
+		}
+
+		// Деталь не существует, создаем её
 		if err := repo.CreatePart(context.TODO(), part); err != nil {
 			log.Printf("Failed to create part %s: %v", part.UUID, err)
+		} else {
+			log.Printf("Created part %s", part.UUID)
 		}
 	}
 }
