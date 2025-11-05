@@ -9,10 +9,12 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.6
+	github.com/joho/godotenv v1.5.1
+	github.com/linemk/rocket-shop/platform v0.0.0-00010101000000-000000000000
 	github.com/linemk/rocket-shop/shared v0.0.0-00010101000000-000000000000
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/stretchr/testify v1.11.1
-	google.golang.org/grpc v1.68.0
+	google.golang.org/grpc v1.76.0
 )
 
 require (
@@ -51,10 +53,13 @@ require (
 	golang.org/x/sync v0.17.0 // indirect
 	golang.org/x/sys v0.36.0 // indirect
 	golang.org/x/text v0.29.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect
-	google.golang.org/protobuf v1.36.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250804133106-a7a43d27e69b // indirect
+	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/linemk/rocket-shop/shared => ../shared
+replace (
+	github.com/linemk/rocket-shop/platform => ../platform
+	github.com/linemk/rocket-shop/shared => ../shared
+)
