@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 )
 
-// GetProjectRoot ищет корневую директорию проекта по наличию go.work файла
+// GetProjectRoot ищет корневую директорию проекта по наличию .git директории
 func GetProjectRoot() string {
 	dir, err := os.Getwd()
 	if err != nil {
@@ -13,14 +13,15 @@ func GetProjectRoot() string {
 	}
 
 	for {
-		_, err = os.Stat(filepath.Join(dir, "go.work"))
-		if err == nil {
+		gitPath := filepath.Join(dir, ".git")
+		info, err := os.Stat(gitPath)
+		if err == nil && info.IsDir() {
 			return dir
 		}
 
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			panic("не удалось найти корень проекта (go.work)")
+			panic("не удалось найти корень проекта (.git)")
 		}
 
 		dir = parent
