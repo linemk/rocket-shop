@@ -154,10 +154,12 @@ tasks:
         ERR=0
         echo "🧪 Запускаем интеграционные тесты ..."
         for mod in {{.MODULES}}; do
-          if [ -d "$mod" ]; then
+          if [ -d "$mod" ] && [ -d "$mod/tests/integration" ]; then
             echo "🧪 Интеграционные тесты для $mod module"
             cd "$mod" && go test -v -tags=integration ./tests/integration/... || ERR=1
             cd ..
+          else
+            echo "⏭️  Пропускаем $mod (нет интеграционных тестов)"
           fi
         done
         exit $ERR
