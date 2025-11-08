@@ -37,3 +37,10 @@ jobs:
     with:
       modules: ${{ needs.extract-vars.outputs.modules }}
       go-version: ${{ needs.extract-vars.outputs.go-version }}
+
+  integration-test:
+    needs: [extract-vars, test]
+    uses: ./.github/workflows/test-integration-reusable.yml
+    with:
+      modules: ${{ needs.extract-vars.outputs.modules }}
+      go-version: ${{ needs.extract-vars.outputs.go-version }}

@@ -19,11 +19,11 @@ type MongoRepository struct {
 }
 
 // NewMongoRepository создает новый MongoDB репозиторий
-func NewMongoRepository(db *mongo.Database) *MongoRepository {
+func NewMongoRepository(ctx context.Context, db *mongo.Database) *MongoRepository {
 	collection := db.Collection("parts")
 
 	// Создаем индексы при инициализации
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	indexCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	indexModels := []mongo.IndexModel{
@@ -42,7 +42,7 @@ func NewMongoRepository(db *mongo.Database) *MongoRepository {
 		},
 	}
 
-	_, err := collection.Indexes().CreateMany(ctx, indexModels)
+	_, err := collection.Indexes().CreateMany(indexCtx, indexModels)
 	if err != nil {
 		panic(err)
 	}

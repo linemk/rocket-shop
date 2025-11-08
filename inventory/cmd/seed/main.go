@@ -1,0 +1,148 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"os"
+	"time"
+
+	"github.com/brianvoe/gofakeit/v7"
+	"github.com/google/uuid"
+	"github.com/joho/godotenv"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+
+	"github.com/linemk/rocket-shop/inventory/internal/entyties/models"
+	inventory_v1 "github.com/linemk/rocket-shop/shared/pkg/proto/inventory/v1"
+)
+
+func main() {
+	// Загружаем .env файл
+	_ = godotenv.Load("deploy/compose/inventory/.env")
+
+	// Получаем параметры подключения из окружения
+	mongoUser := os.Getenv("INVENTORY_MONGO_USER")
+	if mongoUser == "" {
+		mongoUser = "inventory_user"
+	}
+
+	mongoPassword := os.Getenv("INVENTORY_MONGO_PASSWORD")
+	if mongoPassword == "" {
+		mongoPassword = "inventory_password"
+	}
+
+	mongoPort := os.Getenv("INVENTORY_MONGO_PORT")
+	if mongoPort == "" {
+		mongoPort = "27017"
+	}
+
+	mongoDatabase := os.Getenv("INVENTORY_MONGO_DB")
+	if mongoDatabase == "" {
+		mongoDatabase = "inventory_db"
+	}
+
+	// Формируем URI для подключения к localhost (для dev окружения)
+	mongoURI := fmt.Sprintf("mongodb://%s:%s@localhost:%s/%s?authSource=admin",
+		mongoUser, mongoPassword, mongoPort, mongoDatabase)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// Подключаемся к MongoDB
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURI))
+	if err != nil {
+		log.Fatalf("Не удалось подключиться к MongoDB: %v", err)
+	}
+	defer func() {
+		if err := client.Disconnect(ctx); err != nil {
+			log.Printf("Ошибка при отключении от MongoDB: %v", err)
+		}
+	}()
+
+	// Проверяем подключение
+	if err := client.Ping(ctx, nil); err != nil {
+		log.Fatalf("Не удалось проверить подключение к MongoDB: %v", err)
+	}
+
+	collection := client.Database(mongoDatabase).Collection("parts")
+
+	// Создаем тестовые детали
+	parts := generateParts(10)
+
+	fmt.Printf("🌱 Заполняем базу данных %d тестовыми деталями...\n", len(parts))
+
+	for i, part := range parts {
+		_, err := collection.InsertOne(ctx, part)
+		if err != nil {
+			log.Printf("⚠️  Ошибка при вставке детали %d: %v", i+1, err)
+			continue
+		}
+		fmt.Printf("✅ Создана деталь %d/%d: %s (UUID: %s)\n", i+1, len(parts), part.Name, part.UUID)
+	}
+
+	fmt.Println("🎉 База данных успешно заполнена!")
+}
+
+func generateParts(count int) []models.Part {
+	parts := make([]models.Part, 0, count)
+	now := time.Now()
+
+	categories := []inventory_v1.Category{
+		inventory_v1.Category_CATEGORY_ENGINE,
+		inventory_v1.Category_CATEGORY_FUEL,
+		inventory_v1.Category_CATEGORY_PORTHOLE,
+		inventory_v1.Category_CATEGORY_WING,
+	}
+
+	partNames := []string{
+		"Quantum Engine X-3000",
+		"Fusion Reactor Core",
+		"Titanium Wing Panel",
+		"Reinforced Porthole",
+		"Plasma Fuel Tank",
+		"Ion Thruster Assembly",
+		"Carbon Fiber Wing",
+		"Armored Viewport",
+		"Hyperdrive Fuel Cell",
+		"Warp Drive Engine",
+	}
+
+	for i := 0; i < count; i++ {
+		category := categories[i%len(categories)]
+		name := partNames[i%len(partNames)]
+		if i >= len(partNames) {
+			name = fmt.Sprintf("%s Mark-%d", name, i/len(partNames)+1)
+		}
+
+		parts = append(parts, models.Part{
+			UUID:          uuid.New().String(),
+			Name:          name,
+			Description:   gofakeit.Sentence(15),
+			Price:         gofakeit.Float64Range(100, 50000),
+			StockQuantity: int64(gofakeit.IntRange(10, 500)),
+			Category:      category,
+			Dimensions: &models.Dimensions{
+				Length: gofakeit.Float64Range(10, 300),
+				Width:  gofakeit.Float64Range(10, 200),
+				Height: gofakeit.Float64Range(10, 150),
+				Weight: gofakeit.Float64Range(5, 1000),
+			},
+			Manufacturer: &models.Manufacturer{
+				Name:    gofakeit.Company(),
+				Country: gofakeit.Country(),
+				Website: gofakeit.URL(),
+			},
+			Tags: []string{
+				gofakeit.Word(),
+				gofakeit.Word(),
+				"spaceship",
+			},
+			Metadata:  map[string]interface{}{"generated": true, "version": "1.0"},
+			CreatedAt: now,
+			UpdatedAt: now,
+		})
+	}
+
+	return parts
+}

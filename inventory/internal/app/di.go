@@ -50,7 +50,7 @@ func (d *diContainer) InventoryUseCase(ctx context.Context) usecase.InventoryUse
 
 func (d *diContainer) InventoryRepository(ctx context.Context) repository.InventoryRepository {
 	if d.inventoryRepository == nil {
-		d.inventoryRepository = inventoryRepository.NewMongoRepository(d.MongoDBHandle(ctx))
+		d.inventoryRepository = inventoryRepository.NewMongoRepository(ctx, d.MongoDBHandle(ctx))
 	}
 
 	return d.inventoryRepository
