@@ -18,7 +18,14 @@ import (
 )
 
 func main() {
-	// Загружаем .env файл
+	if err := run(); err != nil {
+		log.Fatalf("Ошибка выполнения: %v", err)
+	}
+}
+
+func run() error {
+	// Загружаем .env файл (игнорируем ошибку, т.к. файл может отсутствовать в CI)
+	//nolint:gosec,errcheck
 	_ = godotenv.Load("deploy/compose/inventory/.env")
 
 	// Получаем параметры подключения из окружения
@@ -52,7 +59,7 @@ func main() {
 	// Подключаемся к MongoDB
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURI))
 	if err != nil {
-		log.Fatalf("Не удалось подключиться к MongoDB: %v", err)
+		return fmt.Errorf("не удалось подключиться к MongoDB: %w", err)
 	}
 	defer func() {
 		if err := client.Disconnect(ctx); err != nil {
@@ -62,7 +69,7 @@ func main() {
 
 	// Проверяем подключение
 	if err := client.Ping(ctx, nil); err != nil {
-		log.Fatalf("Не удалось проверить подключение к MongoDB: %v", err)
+		return fmt.Errorf("не удалось проверить подключение к MongoDB: %w", err)
 	}
 
 	collection := client.Database(mongoDatabase).Collection("parts")
@@ -70,7 +77,7 @@ func main() {
 	// Создаем тестовые детали
 	parts := generateParts(10)
 
-	fmt.Printf("🌱 Заполняем базу данных %d тестовыми деталями...\n", len(parts))
+	log.Printf("🌱 Заполняем базу данных %d тестовыми деталями...", len(parts))
 
 	for i, part := range parts {
 		_, err := collection.InsertOne(ctx, part)
@@ -78,10 +85,11 @@ func main() {
 			log.Printf("⚠️  Ошибка при вставке детали %d: %v", i+1, err)
 			continue
 		}
-		fmt.Printf("✅ Создана деталь %d/%d: %s (UUID: %s)\n", i+1, len(parts), part.Name, part.UUID)
+		log.Printf("✅ Создана деталь %d/%d: %s (UUID: %s)", i+1, len(parts), part.Name, part.UUID)
 	}
 
-	fmt.Println("🎉 База данных успешно заполнена!")
+	log.Println("🎉 База данных успешно заполнена!")
+	return nil
 }
 
 func generateParts(count int) []models.Part {

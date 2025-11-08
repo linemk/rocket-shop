@@ -43,6 +43,10 @@ jobs:
         env:
           SERVICES: "inventory,order,payment"
         run: |
+          # Создаем .env из template
+          echo "📄 Копируем .env.template в .env..."
+          cp deploy/env/.env.template deploy/env/.env
+
           # Генерируем все .env файлы для сервисов
           echo "Генерация .env файлов для всех сервисов..."
           task env:generate
