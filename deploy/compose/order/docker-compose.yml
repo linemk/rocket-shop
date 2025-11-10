@@ -2,16 +2,18 @@ services:
   order-postgres:
     image: postgres:15
     container_name: order-postgres
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: ${ORDER_POSTGRES_USER:-order_user}
-      POSTGRES_PASSWORD: ${ORDER_POSTGRES_PASSWORD:-order_password}
-      POSTGRES_DB: ${ORDER_POSTGRES_DB:-order_db}
+      POSTGRES_USER: ${ORDER_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${ORDER_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${ORDER_POSTGRES_DB}
     ports:
-      - "${ORDER_POSTGRES_PORT:-5432}:5432"
+      - "${ORDER_POSTGRES_PORT}:5432"
     volumes:
       - order-pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${ORDER_POSTGRES_USER:-order_user}"]
+      test: ["CMD-SHELL", "pg_isready -U ${ORDER_POSTGRES_USER}"]
       interval: 10s
       timeout: 5s
       retries: 5
