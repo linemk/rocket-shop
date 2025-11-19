@@ -44,6 +44,14 @@ func New(ctx context.Context) (*App, error) {
 
 // Run запускает приложение
 func (a *App) Run(ctx context.Context) error {
+	// Запускаем Kafka consumer в отдельной горутине
+	go func() {
+		if err := a.diContainer.ConsumerService(ctx).RunConsumers(ctx); err != nil {
+			logger.Error(ctx, fmt.Sprintf("Kafka consumer error: %v", err))
+		}
+	}()
+
+	// Запускаем HTTP сервер
 	return a.runHTTPServer(ctx)
 }
 

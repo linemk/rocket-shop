@@ -172,7 +172,7 @@ func TestCreate(t *testing.T) {
 			orderRepository := tt.fields.orderRepository()
 			paymentClient := tt.fields.paymentClient()
 
-			uc := usecase.NewUseCase(orderRepository, inventoryClient, paymentClient)
+			uc := usecase.NewUseCase(orderRepository, inventoryClient, paymentClient, nil)
 
 			orderInfo := usecase.OrderInfo{
 				UserID:        "user-123",

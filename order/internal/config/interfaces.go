@@ -26,3 +26,19 @@ type InventoryGRPCConfig interface {
 type PaymentGRPCConfig interface {
 	Address() string
 }
+
+// KafkaConfig интерфейс конфигурации Kafka
+type KafkaConfig interface {
+	Brokers() []string
+}
+
+// OrderPaidProducerConfig интерфейс конфигурации Kafka producer для OrderPaid
+type OrderPaidProducerConfig interface {
+	Topic() string
+}
+
+// OrderAssembledConsumerConfig интерфейс конфигурации Kafka consumer для OrderAssembled
+type OrderAssembledConsumerConfig interface {
+	Topic() string
+	GroupID() string
+}

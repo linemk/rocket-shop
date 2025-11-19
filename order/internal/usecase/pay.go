@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	uuidgen "github.com/google/uuid"
+
 	"github.com/linemk/rocket-shop/order/internal/client/grpc/payment/converter"
 	"github.com/linemk/rocket-shop/order/internal/entyties/apperrors"
+	"github.com/linemk/rocket-shop/order/internal/entyties/events"
 	"github.com/linemk/rocket-shop/order/internal/entyties/models"
 	order_v1 "github.com/linemk/rocket-shop/shared/pkg/openapi/order/v1"
 )
@@ -38,6 +41,21 @@ func (uc *useCase) PayOrder(ctx context.Context, uuid string, paymentMethod orde
 
 	if err := uc.orderRepository.Update(ctx, uuid, updateInfo); err != nil {
 		return "", fmt.Errorf("failed to update order: %w", err)
+	}
+
+	// 5. Отправляем событие OrderPaid
+	event := &events.OrderPaidEvent{
+		EventUUID:       uuidgen.New().String(),
+		OrderUUID:       order.UUID,
+		UserUUID:        order.UserID,
+		PaymentMethod:   string(paymentMethod),
+		TransactionUUID: transactionUUID,
+	}
+
+	if err := uc.orderProducerService.SendOrderPaid(ctx, event); err != nil {
+		// Ошибка отправки события уже логируется в orderProducerService
+		// Не прерываем основной процесс, т.к. заказ уже оплачен
+		_ = err
 	}
 
 	return transactionUUID, nil
