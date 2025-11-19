@@ -9,7 +9,6 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-
 	models "github.com/linemk/rocket-shop/order/internal/entyties/models"
 	usecase "github.com/linemk/rocket-shop/order/internal/usecase"
 	order_v1 "github.com/linemk/rocket-shop/shared/pkg/openapi/order/v1"

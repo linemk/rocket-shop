@@ -23,8 +23,9 @@ func TestPayOrder(t *testing.T) {
 	transactionUUID := uuid.New().String()
 
 	type fields struct {
-		orderRepository func() *mocks.MockOrderRepository
-		paymentClient   func() *mocks.MockPaymentClient
+		orderRepository      func() *mocks.MockOrderRepository
+		paymentClient        func() *mocks.MockPaymentClient
+		orderProducerService func() *mocks.MockOrderProducerService
 	}
 
 	tests := []struct {
@@ -53,6 +54,12 @@ func TestPayOrder(t *testing.T) {
 
 					return mockClient
 				},
+				orderProducerService: func() *mocks.MockOrderProducerService {
+					mockService := mocks.NewMockOrderProducerService(gomock.NewController(t))
+					mockService.EXPECT().SendOrderPaid(ctx, gomock.Any()).Return(nil)
+
+					return mockService
+				},
 			},
 			wantErr: false,
 		},
@@ -69,6 +76,11 @@ func TestPayOrder(t *testing.T) {
 					mockClient := mocks.NewMockPaymentClient(gomock.NewController(t))
 
 					return mockClient
+				},
+				orderProducerService: func() *mocks.MockOrderProducerService {
+					mockService := mocks.NewMockOrderProducerService(gomock.NewController(t))
+
+					return mockService
 				},
 			},
 			wantErr: true,
@@ -89,6 +101,11 @@ func TestPayOrder(t *testing.T) {
 					mockClient := mocks.NewMockPaymentClient(gomock.NewController(t))
 
 					return mockClient
+				},
+				orderProducerService: func() *mocks.MockOrderProducerService {
+					mockService := mocks.NewMockOrderProducerService(gomock.NewController(t))
+
+					return mockService
 				},
 			},
 			wantErr: true,
@@ -112,6 +129,11 @@ func TestPayOrder(t *testing.T) {
 
 					return mockClient
 				},
+				orderProducerService: func() *mocks.MockOrderProducerService {
+					mockService := mocks.NewMockOrderProducerService(gomock.NewController(t))
+
+					return mockService
+				},
 			},
 			wantErr: true,
 		},
@@ -121,8 +143,9 @@ func TestPayOrder(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			orderRepository := tt.fields.orderRepository()
 			paymentClient := tt.fields.paymentClient()
+			orderProducerService := tt.fields.orderProducerService()
 
-			uc := usecase.NewUseCase(orderRepository, nil, paymentClient, nil)
+			uc := usecase.NewUseCase(orderRepository, nil, paymentClient, orderProducerService)
 
 			result, err := uc.PayOrder(ctx, testUUID, order_v1.PaymentMethodPAYMENTMETHODCARD)
 
