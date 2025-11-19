@@ -10,7 +10,6 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	uuid "github.com/google/uuid"
-
 	v1 "github.com/linemk/rocket-shop/order/internal/client/grpc/inventory/v1"
 )
 

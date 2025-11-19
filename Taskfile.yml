@@ -527,6 +527,23 @@ tasks:
       - echo "🌐 Создаем сеть rocket-shop-network..."
       - docker network create rocket-shop-network 2>/dev/null || echo "✅ Сеть уже существует"
 
+  kafka:up:
+    desc: "Запустить Kafka"
+    deps: [ docker:network:create ]
+    cmds:
+      - echo "🚀 Запускаем Kafka..."
+      - docker-compose -f deploy/compose/core/docker-compose.yml up -d
+      - echo "⏳ Ждем инициализации Kafka..."
+      - sleep 5
+      - echo "✅ Kafka готов"
+
+  kafka:down:
+    desc: "Остановить Kafka"
+    cmds:
+      - echo "🛑 Останавливаем Kafka..."
+      - docker-compose -f deploy/compose/core/docker-compose.yml down
+      - echo "✅ Kafka остановлен"
+
   db:up:
     desc: "Поднять все БД контейнеры (PostgreSQL + MongoDB)"
     deps: [ docker:network:create, env:generate ]
@@ -556,6 +573,19 @@ tasks:
       - docker-compose -f deploy/compose/order/docker-compose.yml down -v
       - echo "✅ Контейнеры удалены"
 
+  infra:up:
+    desc: "Запустить всю инфраструктуру (Kafka + БД)"
+    deps: [ kafka:up, db:up ]
+    cmds:
+      - echo "✅ Вся инфраструктура запущена"
+
+  infra:down:
+    desc: "Остановить всю инфраструктуру (Kafka + БД)"
+    cmds:
+      - task: db:down
+      - task: kafka:down
+      - echo "✅ Вся инфраструктура остановлена"
+
   services:start:inventory:
     desc: "Запустить Inventory service"
     cmds:
@@ -577,6 +607,20 @@ tasks:
       - cd order && go run cmd/main.go > /tmp/order.log 2>&1 &
       - echo "✅ Order запущен"
 
+  services:start:assembly:
+    desc: "Запустить Assembly service"
+    cmds:
+      - echo "🚀 Запускаем Assembly service..."
+      - cd assembly && go run cmd/main.go > /tmp/assembly.log 2>&1 &
+      - echo "✅ Assembly запущен"
+
+  services:start:notification:
+    desc: "Запустить Notification service"
+    cmds:
+      - echo "🚀 Запускаем Notification service..."
+      - cd notification && go run cmd/main.go > /tmp/notification.log 2>&1 &
+      - echo "✅ Notification запущен"
+
   services:start:all:
     desc: "Запустить все микросервисы"
     cmds:
@@ -585,6 +629,9 @@ tasks:
       - sleep 2
       - task: services:start:order
       - sleep 3
+      - task: services:start:assembly
+      - sleep 3
+      - task: services:start:notification
       - echo "✅ Все сервисы запущены"
 
   services:stop:
@@ -594,6 +641,28 @@ tasks:
       - pkill -9 -f "go run" || true
       - sleep 1
       - echo "✅ Сервисы остановлены"
+
+  start:all:
+    desc: "🚀 Запустить всю систему (Kafka + БД + все сервисы)"
+    deps: [ infra:up ]
+    cmds:
+      - task: db:seed
+      - sleep 2
+      - task: services:start:all
+      - |
+        echo ""
+        echo "🎉 Вся система запущена!"
+        echo "📋 Проверить статус:"
+        echo "   - Kafka: docker ps"
+        echo "   - Сервисы: task services:logs:all"
+        echo "   - API: curl http://localhost:8080/api/v1/orders"
+
+  stop:all:
+    desc: "🛑 Остановить всю систему (сервисы + инфраструктура)"
+    cmds:
+      - task: services:stop
+      - task: infra:down
+      - echo "✅ Вся система остановлена"
 
   services:logs:inventory:
     desc: "Показать логи Inventory service"
@@ -610,12 +679,24 @@ tasks:
     cmds:
       - tail -50 /tmp/order.log
 
+  services:logs:assembly:
+    desc: "Показать логи Assembly service"
+    cmds:
+      - tail -50 /tmp/assembly.log
+
+  services:logs:notification:
+    desc: "Показать логи Notification service"
+    cmds:
+      - tail -50 /tmp/notification.log
+
   services:logs:all:
     desc: "Показать логи всех сервисов"
     cmds:
       - echo "=== Inventory ===" && tail -5 /tmp/inventory.log
       - echo "" && echo "=== Payment ===" && tail -5 /tmp/payment.log
       - echo "" && echo "=== Order ===" && tail -5 /tmp/order.log
+      - echo "" && echo "=== Assembly ===" && tail -5 /tmp/assembly.log
+      - echo "" && echo "=== Notification ===" && tail -5 /tmp/notification.log
 
   dev:up:
     desc: "Запустить все: БД + микросервисы (development режим)"

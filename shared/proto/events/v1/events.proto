@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+// Package events.v1 содержит события для асинхронной коммуникации между сервисами
+package events.v1;
+
+option go_package = "github.com/linemk/rocket-shop/shared/pkg/proto/events/v1;events_v1";
+
+// Событие об успешной оплате заказа
+// Публикуется OrderService после успешной оплаты
+// Потребляется AssemblyService и NotificationService
+message OrderPaid {
+  // event_uuid уникальный идентификатор события (для идемпотентности)
+  string event_uuid = 1;
+
+  // order_uuid идентификатор оплаченного заказа
+  string order_uuid = 2;
+
+  // user_uuid идентификатор пользователя
+  string user_uuid = 3;
+
+  // payment_method способ оплаты (строкой, значение из PaymentMethod)
+  string payment_method = 4;
+
+  // transaction_uuid идентификатор транзакции, сгенерированный в результате оплаты
+  string transaction_uuid = 5;
+}
+
+// Событие об успешной сборке корабля
+// Публикуется AssemblyService после завершения сборки
+// Потребляется OrderService и NotificationService
+message ShipAssembled {
+  // event_uuid уникальный идентификатор события (для идемпотентности)
+  string event_uuid = 1;
+
+  // order_uuid идентификатор собранного заказа
+  string order_uuid = 2;
+
+  // user_uuid идентификатор пользователя
+  string user_uuid = 3;
+
+  // build_time_sec время (в секундах), потраченное на сборку корабля
+  int64 build_time_sec = 4;
+}
