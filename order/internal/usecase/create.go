@@ -6,10 +6,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/linemk/rocket-shop/order/internal/entyties/apperrors"
 	"github.com/linemk/rocket-shop/order/internal/entyties/models"
+	"github.com/linemk/rocket-shop/platform/pkg/logger"
 	grpcmiddleware "github.com/linemk/rocket-shop/platform/pkg/middleware/grpc"
 	httpmiddleware "github.com/linemk/rocket-shop/platform/pkg/middleware/http"
 	order_v1 "github.com/linemk/rocket-shop/shared/pkg/openapi/order/v1"
@@ -28,10 +30,16 @@ func (uc *useCase) CreateOrder(ctx context.Context, info OrderInfo) (string, err
 
 	var totalPrice float32
 	for _, partUUID := range info.PartUUIDs {
-		fmt.Printf("DEBUG: GetPart for %s, sessionUUID=%s\n", partUUID, sessionUUID)
+		logger.Debug(ctx, "GetPart request",
+			zap.String("part_uuid", partUUID.String()),
+			zap.String("session_uuid", sessionUUID),
+		)
 		partInfo, err := uc.inventoryClient.GetPart(ctx, partUUID)
-		fmt.Printf("DEBUG: GetPart returned err=%v\n", err)
 		if err != nil {
+			logger.Debug(ctx, "GetPart failed",
+				zap.String("part_uuid", partUUID.String()),
+				zap.Error(err),
+			)
 			return "", apperrors.ErrPartNotFound
 		}
 
