@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+// Package common.v1 содержит общие модели для IAM сервиса
+package common.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/linemk/rocket-shop/shared/pkg/proto/common/v1;common_v1";
+
+// Session представляет сессию пользователя
+message Session {
+  // session_uuid уникальный идентификатор сессии
+  string session_uuid = 1;
+
+  // user_uuid UUID пользователя, которому принадлежит сессия
+  string user_uuid = 2;
+
+  // created_at время создания сессии
+  google.protobuf.Timestamp created_at = 3;
+
+  // expires_at время истечения сессии
+  google.protobuf.Timestamp expires_at = 4;
+}

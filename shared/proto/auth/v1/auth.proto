@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+// Package auth.v1 содержит API для аутентификации и авторизации
+package auth.v1;
+
+import "common/v1/user.proto";
+
+option go_package = "github.com/linemk/rocket-shop/shared/pkg/proto/auth/v1;auth_v1";
+
+// AuthService предоставляет API для работы с аутентификацией и сессиями
+service AuthService {
+  // Login выполняет вход пользователя и создает сессию
+  rpc Login(LoginRequest) returns (LoginResponse);
+
+  // Whoami возвращает информацию о текущем пользователе по сессии
+  rpc Whoami(WhoamiRequest) returns (WhoamiResponse);
+}
+
+// Запрос на вход
+message LoginRequest {
+  // login логин пользователя
+  string login = 1;
+
+  // password пароль пользователя
+  string password = 2;
+}
+
+// Ответ с идентификатором сессии
+message LoginResponse {
+  // session_uuid идентификатор созданной сессии
+  string session_uuid = 1;
+}
+
+// Запрос на получение информации о текущем пользователе
+message WhoamiRequest {
+  // session_uuid идентификатор сессии
+  string session_uuid = 1;
+}
+
+// Ответ с информацией о пользователе
+message WhoamiResponse {
+  // user информация о пользователе
+  common.v1.User user = 1;
+}

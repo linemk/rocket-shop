@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+// Package user.v1 содержит API для управления пользователями
+package user.v1;
+
+import "common/v1/user.proto";
+
+option go_package = "github.com/linemk/rocket-shop/shared/pkg/proto/user/v1;user_v1";
+
+// UserService предоставляет API для управления пользователями
+service UserService {
+  // Register регистрирует нового пользователя
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+
+  // GetUser возвращает информацию о пользователе по UUID
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+}
+
+// Запрос на регистрацию пользователя
+message RegisterRequest {
+  // login логин пользователя
+  string login = 1;
+
+  // password пароль пользователя
+  string password = 2;
+
+  // email email пользователя
+  string email = 3;
+
+  // notification_methods каналы для получения уведомлений
+  repeated common.v1.NotificationMethod notification_methods = 4;
+}
+
+// Ответ с UUID зарегистрированного пользователя
+message RegisterResponse {
+  // user_uuid UUID зарегистрированного пользователя
+  string user_uuid = 1;
+}
+
+// Запрос на получение информации о пользователе
+message GetUserRequest {
+  // user_uuid UUID пользователя
+  string user_uuid = 1;
+}
+
+// Ответ с информацией о пользователе
+message GetUserResponse {
+  // user информация о пользователе
+  common.v1.User user = 1;
+}

@@ -42,3 +42,8 @@ type OrderAssembledConsumerConfig interface {
 	Topic() string
 	GroupID() string
 }
+
+// IAMGRPCConfig интерфейс конфигурации gRPC клиента для IAM
+type IAMGRPCConfig interface {
+	Address() string
+}

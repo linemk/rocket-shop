@@ -4,6 +4,8 @@ post:
   operationId: CreateOrder
   tags:
     - OrderService
+  parameters:
+    - $ref: ../headers/session_uuid.yaml
   requestBody:
     content:
       application/json:

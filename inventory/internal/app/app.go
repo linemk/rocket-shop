@@ -13,6 +13,7 @@ import (
 	"github.com/linemk/rocket-shop/platform/pkg/closer"
 	"github.com/linemk/rocket-shop/platform/pkg/grpc/health"
 	"github.com/linemk/rocket-shop/platform/pkg/logger"
+	grpcmiddleware "github.com/linemk/rocket-shop/platform/pkg/middleware/grpc"
 	inventory_v1 "github.com/linemk/rocket-shop/shared/pkg/proto/inventory/v1"
 )
 
@@ -96,7 +97,11 @@ func (a *App) initListener(_ context.Context) error {
 }
 
 func (a *App) initGRPCServer(ctx context.Context) error {
-	a.grpcServer = grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
+	a.grpcServer = grpc.NewServer(
+		grpc.Creds(insecure.NewCredentials()),
+		grpc.UnaryInterceptor(grpcmiddleware.UnaryAuthInterceptor),
+		grpc.StreamInterceptor(grpcmiddleware.StreamAuthInterceptor),
+	)
 
 	closer.AddNamed("gRPC server", func(ctx context.Context) error {
 		a.grpcServer.GracefulStop()

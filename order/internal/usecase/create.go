@@ -6,9 +6,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"google.golang.org/grpc/metadata"
 
 	"github.com/linemk/rocket-shop/order/internal/entyties/apperrors"
 	"github.com/linemk/rocket-shop/order/internal/entyties/models"
+	grpcmiddleware "github.com/linemk/rocket-shop/platform/pkg/middleware/grpc"
+	httpmiddleware "github.com/linemk/rocket-shop/platform/pkg/middleware/http"
 	order_v1 "github.com/linemk/rocket-shop/shared/pkg/openapi/order/v1"
 )
 
@@ -17,9 +20,17 @@ func (uc *useCase) CreateOrder(ctx context.Context, info OrderInfo) (string, err
 		return "", apperrors.ErrNoPartsSpecified
 	}
 
+	// Передаем session UUID в Inventory через gRPC metadata
+	sessionUUID := httpmiddleware.ForwardSessionUUIDToGRPC(ctx)
+	if sessionUUID != "" {
+		ctx = metadata.AppendToOutgoingContext(ctx, grpcmiddleware.SessionUUIDHeader, sessionUUID)
+	}
+
 	var totalPrice float32
 	for _, partUUID := range info.PartUUIDs {
+		fmt.Printf("DEBUG: GetPart for %s, sessionUUID=%s\n", partUUID, sessionUUID)
 		partInfo, err := uc.inventoryClient.GetPart(ctx, partUUID)
+		fmt.Printf("DEBUG: GetPart returned err=%v\n", err)
 		if err != nil {
 			return "", apperrors.ErrPartNotFound
 		}

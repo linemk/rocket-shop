@@ -1,6 +1,7 @@
 get:
   parameters:
     - $ref: ../params/order_uuid.yaml
+    - $ref: ../headers/session_uuid.yaml
   summary: Get order by uuid
   operationId: GetOrder
   tags:

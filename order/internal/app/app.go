@@ -17,6 +17,7 @@ import (
 	"github.com/linemk/rocket-shop/order/internal/config"
 	"github.com/linemk/rocket-shop/platform/pkg/closer"
 	"github.com/linemk/rocket-shop/platform/pkg/logger"
+	httpmiddleware "github.com/linemk/rocket-shop/platform/pkg/middleware/http"
 	"github.com/linemk/rocket-shop/platform/pkg/migrator/pg"
 	order_v1 "github.com/linemk/rocket-shop/shared/pkg/openapi/order/v1"
 )
@@ -151,6 +152,7 @@ func (a *App) initHTTPServer(ctx context.Context) error {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(10 * time.Second))
 	r.Use(render.SetContentType(render.ContentTypeJSON))
+	r.Use(httpmiddleware.OptionalAuthMiddleware)
 
 	r.Mount("/", orderServer)
 

@@ -14,6 +14,7 @@ import (
 	inventoryRepository "github.com/linemk/rocket-shop/inventory/internal/repository/inventory"
 	"github.com/linemk/rocket-shop/inventory/internal/usecase"
 	"github.com/linemk/rocket-shop/platform/pkg/closer"
+	iamclient "github.com/linemk/rocket-shop/shared/pkg/iamclient"
 	inventory_v1 "github.com/linemk/rocket-shop/shared/pkg/proto/inventory/v1"
 )
 
@@ -26,6 +27,7 @@ type diContainer struct {
 
 	mongoDBClient *mongo.Client
 	mongoDBHandle *mongo.Database
+	iamClient     *iamclient.Client
 }
 
 func NewDiContainer() *diContainer {
@@ -84,4 +86,18 @@ func (d *diContainer) MongoDBHandle(ctx context.Context) *mongo.Database {
 	}
 
 	return d.mongoDBHandle
+}
+
+func (d *diContainer) IAMClient(ctx context.Context) *iamclient.Client {
+	if d.iamClient == nil {
+		client, err := iamclient.New(ctx, config.AppConfig().IAMGRPC.Address())
+		if err != nil {
+			panic(fmt.Sprintf("failed to create IAM client: %s\n", err.Error()))
+		}
+		closer.AddNamed("IAM gRPC client", func(ctx context.Context) error {
+			return client.Close()
+		})
+		d.iamClient = client
+	}
+	return d.iamClient
 }
