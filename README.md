@@ -39,11 +39,8 @@ brew install go-task
 # Создать Docker сеть
 docker network create rocket-shop-network
 
-# Запустить Kafka
-docker-compose -f deploy/compose/core/docker-compose.yml up -d
-
-# Запустить базы данных
-task db:up
+# Запустить инфраструктуру (Kafka + PostgreSQL + MongoDB + Redis)
+task infra:up
 
 # Заполнить БД тестовыми данными
 task db:seed
@@ -53,6 +50,10 @@ task db:seed
 
 ```bash
 # Запустить все сервисы
+task start:all
+
+# Или запустить отдельные сервисы
+task services:start:iam
 task services:start:inventory
 task services:start:payment
 task services:start:order
@@ -63,14 +64,156 @@ task services:start:notification
 ### 3. Остановка системы
 
 ```bash
-# Остановить сервисы
-task services:stop
+# Остановить все сервисы (рекомендуется)
+task stop:all
 
-# Остановить базы данных
-task db:down
+# Или остановить отдельные компоненты
+task services:stop          # Остановить сервисы
+task db:down               # Остановить базы данных
+```
 
-# Остановить Kafka
-docker-compose -f deploy/compose/core/docker-compose.yml down
+---
+
+## 🔐 Полный Flow: IAM + Order + Inventory (SL-5-IAM)
+
+### Тестирование всего процесса: Register → Login → Create Order
+
+```bash
+# 1. Убедитесь, что система запущена
+task start:all
+
+# 2. Запустите полный тест
+task test-api
+```
+
+**Что происходит в полном flow:**
+
+1. **Register пользователя** (IAM Service)
+   - Создает пользователя в PostgreSQL
+   - Хэширует пароль (bcrypt)
+   - Возвращает UUID пользователя
+
+2. **Login** (IAM Service)
+   - Проверяет учетные данные
+   - Создает сессию в Redis (TTL = 24 часа)
+   - Добавляет сессию в множество пользователя
+   - Возвращает Session UUID
+
+3. **List Parts** (Inventory Service)
+   - Получает Session UUID из gRPC metadata (`session-uuid` заголовок)
+   - Валидирует сессию через IAM Interceptor
+   - Возвращает список доступных частей из MongoDB
+
+4. **Create Order** (Order Service)
+   - Получает Session UUID из HTTP заголовка (`X-Session-UUID`)
+   - Передает Session UUID в gRPC metadata при вызове Inventory
+   - Проверяет наличие деталей в Inventory
+   - Создает заказ в PostgreSQL
+   - Возвращает Order UUID
+
+5. **Pay Order** (Order Service)
+   - Обновляет статус заказа на `PAID`
+   - Отправляет событие `OrderPaid` в Kafka
+   - Assembly сервис начинает сборку корабля
+
+6. **Cancel Order** (Order Service)
+   - Отменяет заказ со статусом `PENDING_PAYMENT`
+   - Обновляет статус на `CANCELLED`
+
+### Redis & Session Management
+
+#### Проверка сессий в Redis
+
+```bash
+# Подключиться к Redis
+redis-cli
+
+# Посмотреть все сессии
+KEYS "session:*"
+
+# Посмотреть данные конкретной сессии
+GET "session:<SESSION_UUID>"
+
+# Посмотреть все сессии пользователя
+SMEMBERS "user_sessions:<USER_UUID>"
+
+# Проверить TTL сессии
+TTL "session:<SESSION_UUID>"
+
+# Очистить сессии (для тестирования)
+DEL "session:<SESSION_UUID>"
+FLUSHDB
+```
+
+### gRPC + Reflection
+
+#### Проверка доступных сервисов
+
+```bash
+# Список всех сервисов на IAM
+grpcurl -plaintext localhost:50053 list
+
+# Методы AuthService
+grpcurl -plaintext localhost:50053 list auth.v1.AuthService
+
+# Методы UserService
+grpcurl -plaintext localhost:50053 list user.v1.UserService
+
+# Методы InventoryService
+grpcurl -plaintext localhost:50051 list inventory.v1.InventoryService
+
+# Структура сообщения
+grpcurl -plaintext localhost:50053 describe auth.v1.LoginRequest
+```
+
+### Примеры тестирования
+
+#### 1. Регистрация
+
+```bash
+grpcurl -plaintext \
+  -d '{"login":"test-user","password":"secret123","email":"test@example.com","notification_methods":[]}' \
+  localhost:50053 user.v1.UserService/Register
+```
+
+#### 2. Логин
+
+```bash
+grpcurl -plaintext \
+  -d '{"login":"test-user","password":"secret123"}' \
+  localhost:50053 auth.v1.AuthService/Login
+```
+
+**Ответ:**
+```json
+{
+  "session_uuid": "5596703b-d136-408a-aca6-fc76a9e3481c"
+}
+```
+
+#### 3. Список деталей (с Session UUID в metadata)
+
+```bash
+grpcurl -plaintext \
+  -H "session-uuid: 5596703b-d136-408a-aca6-fc76a9e3481c" \
+  localhost:50051 inventory.v1.InventoryService/ListParts
+```
+
+#### 4. Создание заказа (с Session UUID в HTTP заголовке)
+
+```bash
+curl -X POST http://localhost:8080/api/v1/orders \
+  -H "Content-Type: application/json" \
+  -H "X-Session-UUID: 5596703b-d136-408a-aca6-fc76a9e3481c" \
+  -d '{"user_uuid":"user-uuid-from-register","part_uuids":["part-uuid-1"]}'
+```
+
+#### 5. Проверка текущего пользователя
+
+```bash
+grpcurl -plaintext \
+  -d '{"session_uuid":"5596703b-d136-408a-aca6-fc76a9e3481c"}' \
+  localhost:50053 auth.v1.AuthService/Whoami
 ```
 
 ---

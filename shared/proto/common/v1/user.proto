@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+// Package common.v1 содержит общие модели для IAM сервиса
+package common.v1;
+
+option go_package = "github.com/linemk/rocket-shop/shared/pkg/proto/common/v1;common_v1";
+
+// User представляет пользователя в системе
+message User {
+  // user_uuid уникальный идентификатор пользователя
+  string user_uuid = 1;
+
+  // login логин пользователя
+  string login = 2;
+
+  // email email пользователя
+  string email = 3;
+
+  // notification_methods каналы для получения уведомлений
+  repeated NotificationMethod notification_methods = 4;
+}
+
+// NotificationMethod представляет канал для уведомлений
+message NotificationMethod {
+  // provider_name имя провайдера (telegram, email, push)
+  string provider_name = 1;
+
+  // target адрес получателя (email, ID чата и т.д.)
+  string target = 2;
+}

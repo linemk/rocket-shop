@@ -21,6 +21,7 @@ import (
 	"github.com/linemk/rocket-shop/platform/pkg/kafka/producer"
 	"github.com/linemk/rocket-shop/platform/pkg/logger"
 	kafkaMiddleware "github.com/linemk/rocket-shop/platform/pkg/middleware/kafka"
+	iamclient "github.com/linemk/rocket-shop/shared/pkg/iamclient"
 	order_v1 "github.com/linemk/rocket-shop/shared/pkg/openapi/order/v1"
 )
 
@@ -33,6 +34,7 @@ type diContainer struct {
 
 	inventoryClient inventoryClient.InventoryClient
 	paymentClient   paymentClient.PaymentClient
+	iamClient       *iamclient.Client
 
 	consumerService      service.ConsumerService
 	orderProducerService service.OrderProducerService
@@ -177,4 +179,21 @@ func (d *diContainer) OrderProducerService(ctx context.Context) service.OrderPro
 	}
 
 	return d.orderProducerService
+}
+
+func (d *diContainer) IAMClient(ctx context.Context) *iamclient.Client {
+	if d.iamClient == nil {
+		client, err := iamclient.New(ctx, config.AppConfig().IAMGRPC.Address())
+		if err != nil {
+			panic(fmt.Sprintf("failed to create IAM client: %s\n", err.Error()))
+		}
+
+		closer.AddNamed("IAM gRPC client", func(ctx context.Context) error {
+			return client.Close()
+		})
+
+		d.iamClient = client
+	}
+
+	return d.iamClient
 }

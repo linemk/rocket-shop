@@ -15,10 +15,14 @@ import (
 	v1 "github.com/linemk/rocket-shop/order/internal/client/grpc/inventory/v1"
 	"github.com/linemk/rocket-shop/order/internal/mocks"
 	"github.com/linemk/rocket-shop/order/internal/usecase"
+	"github.com/linemk/rocket-shop/platform/pkg/logger"
 	order_v1 "github.com/linemk/rocket-shop/shared/pkg/openapi/order/v1"
 )
 
 func TestCreate(t *testing.T) {
+	// Инициализируем no-op логгер для тестов
+	logger.SetNopLogger()
+
 	ctx := context.Background()
 	partUUID1 := uuid.New()
 	partUUID2 := uuid.New()
@@ -40,7 +44,7 @@ func TestCreate(t *testing.T) {
 				inventoryClient: func() *mocks.MockInventoryClient {
 					mockClient := mocks.NewMockInventoryClient(gomock.NewController(t)) // нужен для подсчета вызовов
 
-					mockClient.EXPECT().GetPart(ctx, partUUID1).Return(
+					mockClient.EXPECT().GetPart(gomock.Any(), partUUID1).Return(
 						v1.PartInfo{
 							UUID:          partUUID1.String(),
 							Name:          "Engine Part",
@@ -49,7 +53,7 @@ func TestCreate(t *testing.T) {
 						}, nil,
 					)
 
-					mockClient.EXPECT().GetPart(ctx, partUUID2).Return(
+					mockClient.EXPECT().GetPart(gomock.Any(), partUUID2).Return(
 						v1.PartInfo{
 							UUID:          partUUID2.String(),
 							Name:          "Wing Part",
@@ -63,7 +67,7 @@ func TestCreate(t *testing.T) {
 
 				orderRepository: func() *mocks.MockOrderRepository {
 					mockClient := mocks.NewMockOrderRepository(gomock.NewController(t))
-					mockClient.EXPECT().Create(ctx, gomock.Any()).Return(nil)
+					mockClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
 
 					return mockClient
 				},
@@ -81,7 +85,7 @@ func TestCreate(t *testing.T) {
 			fields: fields{
 				inventoryClient: func() *mocks.MockInventoryClient {
 					mockClient := mocks.NewMockInventoryClient(gomock.NewController(t))
-					mockClient.EXPECT().GetPart(ctx, partUUID1).Return(v1.PartInfo{}, apperrors.ErrPartNotFound)
+					mockClient.EXPECT().GetPart(gomock.Any(), partUUID1).Return(v1.PartInfo{}, apperrors.ErrPartNotFound)
 
 					return mockClient
 				},
@@ -104,7 +108,7 @@ func TestCreate(t *testing.T) {
 			fields: fields{
 				inventoryClient: func() *mocks.MockInventoryClient {
 					mockClient := mocks.NewMockInventoryClient(gomock.NewController(t))
-					mockClient.EXPECT().GetPart(ctx, partUUID1).Return(v1.PartInfo{}, apperrors.ErrPartOutOfStock)
+					mockClient.EXPECT().GetPart(gomock.Any(), partUUID1).Return(v1.PartInfo{}, apperrors.ErrPartOutOfStock)
 
 					return mockClient
 				},
@@ -128,7 +132,7 @@ func TestCreate(t *testing.T) {
 				inventoryClient: func() *mocks.MockInventoryClient {
 					mockClient := mocks.NewMockInventoryClient(gomock.NewController(t)) // нужен для подсчета вызовов
 
-					mockClient.EXPECT().GetPart(ctx, partUUID1).Return(
+					mockClient.EXPECT().GetPart(gomock.Any(), partUUID1).Return(
 						v1.PartInfo{
 							UUID:          partUUID1.String(),
 							Name:          "Engine Part",
@@ -137,7 +141,7 @@ func TestCreate(t *testing.T) {
 						}, nil,
 					)
 
-					mockClient.EXPECT().GetPart(ctx, partUUID2).Return(
+					mockClient.EXPECT().GetPart(gomock.Any(), partUUID2).Return(
 						v1.PartInfo{
 							UUID:          partUUID2.String(),
 							Name:          "Wing Part",
@@ -151,7 +155,7 @@ func TestCreate(t *testing.T) {
 
 				orderRepository: func() *mocks.MockOrderRepository {
 					mockClient := mocks.NewMockOrderRepository(gomock.NewController(t))
-					mockClient.EXPECT().Create(ctx, gomock.Any()).Return(fmt.Errorf("failed to create order"))
+					mockClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(fmt.Errorf("failed to create order"))
 
 					return mockClient
 				},
