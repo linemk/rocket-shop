@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 
 	inventoryV1 "github.com/linemk/rocket-shop/shared/pkg/proto/inventory/v1"
 )
@@ -22,6 +23,9 @@ var _ = Describe("InventoryService", func() {
 
 	BeforeEach(func() {
 		ctx, cancel = context.WithCancel(suiteCtx)
+
+		// Добавляем session-uuid в metadata для авторизации
+		ctx = metadata.AppendToOutgoingContext(ctx, "session-uuid", "test-session-uuid")
 
 		// Чистим коллекцию перед каждым тестом
 		err := env.ClearPartsCollection(ctx)
